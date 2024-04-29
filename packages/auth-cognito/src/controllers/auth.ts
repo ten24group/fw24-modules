@@ -1,4 +1,4 @@
-import { Controller, APIGatewayController, Get, Request, Response, Post, Authorizer } from '@ten24group/fw24';
+import { Controller, APIGatewayController, Request, Response, Post, Authorizer } from '@ten24group/fw24';
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 // import cognito client
