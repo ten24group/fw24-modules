@@ -228,7 +228,7 @@ export class AuthController extends APIGatewayController {
 			this.logger.debug("Token is valid. Payload:", payload);
 		} catch {
 			this.logger.debug("Token not valid!");
-			return res.send('Token not valid');
+			throw new Error(`Invalid ID-Token: ${idToken}`);
 		}
 
 		const providerName = `cognito-idp.us-east-1.amazonaws.com/${this.getUserPoolID()}`;
