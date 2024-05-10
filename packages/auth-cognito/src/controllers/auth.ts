@@ -1,4 +1,4 @@
-import { Controller, APIGatewayController, Request, Response, Post, Authorizer, TestComplexValidationResult, InputValidationRule } from '@ten24group/fw24';
+import { Controller, APIController, Request, Response, Post, Authorizer, TestComplexValidationResult, InputValidationRule  } from '@ten24group/fw24';
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 // import cognito client
@@ -82,7 +82,7 @@ const emailAndPasswordValidations: InputValidationRule<EmailAndPassword> = {
 		{ name: 'identityPoolID', prefix: 'authmodule' }
 	]
 })
-export class AuthController extends APIGatewayController {	
+export class AuthController extends APIController {	
 	
 	async initialize() {
         // register DI factories
@@ -92,9 +92,8 @@ export class AuthController extends APIGatewayController {
 	protected getOverriddenHttpRequestValidationErrorMessages(): Promise<Map<string, string>> {
 		return Promise.resolve(new Map(
 			Object.entries({
-				"validation.http.body.password.pattern.validator": "Password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}"
-				"validation.http.body.newPassword.pattern.validator": "New password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}"
-				"validation.http.body.oldPassword.pattern.validator": "Old password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}"
+				"validation.http.body.password.pattern.validator": "Password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
+				"validation.http.body.newPassword.pattern.validator": "New password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
 			})
 		))
 	}
