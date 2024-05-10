@@ -1,4 +1,4 @@
-import { Controller, APIGatewayController, Request, Response, Post, Authorizer } from '@ten24group/fw24';
+import { Controller, APIController, Request, Response, Post, Authorizer } from '@ten24group/fw24';
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 // import cognito client
@@ -18,7 +18,7 @@ const identityClient = new CognitoIdentityClient({});
 		{ name: 'identityPoolID', prefix: 'authmodule' }
 	]
 })
-export class AuthController extends APIGatewayController {	
+export class AuthController extends APIController {	
 	
 	async initialize() {
         // register DI factories
