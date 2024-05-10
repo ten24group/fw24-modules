@@ -1,21 +1,21 @@
-import { AbstractFw24Module, IStack, CognitoStack, ICognitoConfig, createLogger, LambdaFunctionProps, ILogger } from '@ten24group/fw24';
+import { AbstractFw24Module, FW24Construct, AuthConstruct, IAuthConstructConfig, createLogger, LambdaFunctionProps, ILogger } from '@ten24group/fw24';
 import { join } from 'path';
 
-export interface IAuthModuleConfig extends ICognitoConfig {
+export interface IAuthModuleConfig extends IAuthConstructConfig {
     
 }
 
 export class AuthModule extends AbstractFw24Module {
-    readonly logger: ILogger = createLogger(CognitoStack.name);
+    readonly logger: ILogger = createLogger(AuthConstruct.name);
 
-    protected stacks: Map<string, IStack>; 
+    protected constructs: Map<string, FW24Construct>; 
 
     // array of type of stacks that this stack is dependent on
     dependencies: string[] = [];
 
     constructor( protected readonly config: IAuthModuleConfig){
         super(config);
-        this.stacks = new Map();
+        this.constructs = new Map();
 
         if(config.groups){
             const autoUserSignupHandler: LambdaFunctionProps = {
@@ -24,12 +24,12 @@ export class AuthModule extends AbstractFw24Module {
             config.groups.filter(group => group.autoUserSignup).map(group => Object.assign(group, {autoUserSignupHandler: autoUserSignupHandler}));
         }
         this.logger.debug("AuthModule: ", config);
-        const cognito = new CognitoStack({	
+        const cognito = new AuthConstruct({	
             name: 'authmodule',
             ...config,
         });
 
-        this.stacks.set('auth-cognito', cognito );
+        this.constructs.set('auth-cognito', cognito );
 
     }
 
@@ -41,8 +41,8 @@ export class AuthModule extends AbstractFw24Module {
         return __dirname;
     }
 
-    getStacks(): Map<string, IStack> {
-        return this.stacks;
+    getConstructs(): Map<string, FW24Construct> {
+        return this.constructs;
     }
 
     getQueuesDirectory(): string {
