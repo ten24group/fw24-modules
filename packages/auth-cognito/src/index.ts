@@ -1,4 +1,4 @@
-import { AbstractFw24Module, IConstruct, AuthConstruct, IAuthConstructConfig, createLogger, LambdaFunctionProps, ILogger } from '@ten24group/fw24';
+import { AbstractFw24Module, FW24Construct, AuthConstruct, IAuthConstructConfig, createLogger, LambdaFunctionProps, ILogger } from '@ten24group/fw24';
 import { join } from 'path';
 
 export interface IAuthModuleConfig extends IAuthConstructConfig {
@@ -8,7 +8,7 @@ export interface IAuthModuleConfig extends IAuthConstructConfig {
 export class AuthModule extends AbstractFw24Module {
     readonly logger: ILogger = createLogger(AuthConstruct.name);
 
-    protected constructs: Map<string, IConstruct>; 
+    protected constructs: Map<string, FW24Construct>; 
 
     // array of type of stacks that this stack is dependent on
     dependencies: string[] = [];
@@ -41,7 +41,7 @@ export class AuthModule extends AbstractFw24Module {
         return __dirname;
     }
 
-    getConstructs(): Map<string, IConstruct> {
+    getConstructs(): Map<string, FW24Construct> {
         return this.constructs;
     }
 
