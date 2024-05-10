@@ -25,6 +25,7 @@ export class AuthModule extends AbstractFw24Module {
             .map( group => Object.assign(group, {autoUserSignupHandler}));
         }
         this.logger.debug("AuthModule: ", config);
+        
         const cognito = new AuthConstruct({	
             name: 'authmodule',
             ...config,

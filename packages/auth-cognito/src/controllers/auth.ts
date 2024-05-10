@@ -46,6 +46,7 @@ const customPasswordValidator = (inputValue: any): TestComplexValidationResult =
 
 		result.received = [ '*'.repeat(inputValue?.length ?? 0 ), strengths[expected?.length ] ];
 		result.expected = [ 'at least', expected.join(', ')];
+
 		result.customMessageId = "validation.http.body.password.pattern.validator";
 	}
 
@@ -64,11 +65,13 @@ const emailAndPasswordValidations: InputValidationRule<EmailAndPassword> = {
 	}, 
 	password: {
 		required: true,
-		minLength: 8,
-		maxLength: 20,
-		pattern: {
-			validator: (inputVal: any) => Promise.resolve(customPasswordValidator(inputVal)),
-		}
+		/*
+			minLength: 8,
+			maxLength: 20,
+			pattern: {
+				validator: (inputVal: any) => Promise.resolve(customPasswordValidator(inputVal)),
+			}
+		*/
 	}
 } as const;
 
@@ -89,15 +92,16 @@ export class AuthController extends APIController {
         return Promise.resolve();
     }
 
-	protected getOverriddenHttpRequestValidationErrorMessages(): Promise<Map<string, string>> {
-		return Promise.resolve(new Map(
-			Object.entries({
-				"validation.http.body.password.pattern.validator": "Password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
-				"validation.http.body.newPassword.pattern.validator": "New password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
-			})
-		))
-	}
-
+	/*
+		protected getOverriddenHttpRequestValidationErrorMessages(): Promise<Map<string, string>> {
+			return Promise.resolve(new Map(
+				Object.entries({
+					"validation.http.body.password.pattern.validator": "Password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
+					"validation.http.body.newPassword.pattern.validator": "New password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
+				})
+			))
+		}
+	*/
 	/*
 	Cognito signup, signin and verify email methods
 	*/
@@ -107,13 +111,6 @@ export class AuthController extends APIController {
 		const {email, password} = req.body as EmailAndPassword;
 
 		const userPoolClientId = this.getUserPoolClientId();
-
-		this.logger.info("req.body", {
-			body: req.body, 
-			ClientId: userPoolClientId,
-			Username: email,
-			Password: password
-		});
 
 		await identityProviderClient.send(
 			new SignUpCommand({
@@ -164,9 +161,7 @@ export class AuthController extends APIController {
 	}
 
 	@Post('/signout', {
-		validations: {
-			accessToken: { required: true }
-		}
+		validations: { accessToken: { required: true } }
 	})
 	async signout(req: Request, res: Response) {
 		const {accessToken} = req.body as { accessToken: string };
@@ -210,16 +205,7 @@ export class AuthController extends APIController {
 		validations: {
 			accessToken: { required: true },
 			oldPassword: { required: true },
-			newPassword: {
-				minLength: 8,
-				maxLength: 20,
-				pattern: {
-					validator: (inputVal: any) => Promise.resolve({ 
-						...customPasswordValidator(inputVal), 
-						customMessageid: 'validation.http.body.newPassword.pattern.validator' 
-					}),
-				}
-			}
+			newPassword: { required: true }
 		}
 	})
 	async changePassword(req: Request, res: Response) {
@@ -264,17 +250,7 @@ export class AuthController extends APIController {
 		validations: {
 			code: { required: true },
 			email: { required: true, datatype: 'email' },
-			newPassword: {
-				minLength: 8,
-				maxLength: 20,
-				pattern: {
-					message: "New Password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
-					validator: (inputVal: any) => Promise.resolve({ 
-						...customPasswordValidator(inputVal), 
-						customMessageid: 'validation.http.body.newPassword.pattern.validator' 
-					}),
-				}
-			}
+			newPassword: { required: true },
 		}
 	})
 	async confirmForgotPassword(req: Request, res: Response) {
