@@ -21,9 +21,11 @@ export class AuthModule extends AbstractFw24Module {
             const autoUserSignupHandler: LambdaFunctionProps = {
                 entry: join(__dirname,'functions/auto-post-confirmation.js')
             }
-            config.groups.filter(group => group.autoUserSignup).map(group => Object.assign(group, {autoUserSignupHandler: autoUserSignupHandler}));
+            config.groups.filter(group => group.autoUserSignup)
+            .map( group => Object.assign(group, {autoUserSignupHandler}));
         }
         this.logger.debug("AuthModule: ", config);
+        
         const cognito = new AuthConstruct({	
             name: 'authmodule',
             ...config,
