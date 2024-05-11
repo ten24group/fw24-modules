@@ -32,15 +32,15 @@ import { AuthModule } from '@ten24group/fw24-auth-cognito';
 const authModule = new AuthModule({
 	userPool: {
 		props: {
-            userPoolName: 'authmodule'
+			userPoolName: 'authmodule'
 			selfSignUpEnabled: true,
-            // all user pool properties available here: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_cognito.UserPoolProps.html
+			// all user pool properties available here: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_cognito.UserPoolProps.html
 		}
 	},
 	groups: [
 		{
 			name: 'admin',
-            precedence: 0
+			precedence: 0
 			policyFilePaths: [
 				'./src/policy/admin.json',
 			],
@@ -48,7 +48,7 @@ const authModule = new AuthModule({
 		},
 		{
 			name: 'user',
-            precedence: 1
+			precedence: 1
 			autoUserSignup: true,
 			policyFilePaths: [
 				'./src/policy/user.json',
