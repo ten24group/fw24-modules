@@ -127,7 +127,7 @@ export class AuthController extends APIController {
 		);
 		
 		return res.json({
-			massage: 'User Signed Up'
+			message: 'User Signed Up'
 		});
 	}
 
