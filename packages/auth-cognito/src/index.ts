@@ -23,19 +23,22 @@ export class AuthModule extends AbstractFw24Module {
             }
             config.groups.filter(group => group.autoUserSignup)
             .map( group => Object.assign(group, {autoUserSignupHandler}));
-        };
-
+        }
+        if(config.userPool && !config.userPool.props.userPoolName){
+            // set the user pool name
+            Object.assign(config.userPool.props, {userPoolName: 'authmodule'});
+        } else if (!config.userPool){
+            // set the user pool name
+            config.userPool = {
+                props: {
+                    userPoolName: 'authmodule'
+                }
+            }
+        }
         this.logger.debug("AuthModule: ", config);
         
         const cognito = new AuthConstruct({	
-            ...(config ?? {}),
-            userPool: {
-                ...(config.userPool ?? {}), 
-                props: { 
-                    ...(config.userPool?.props ?? {}),
-                    userPoolName: config?.userPool?.props?.userPoolName || 'authmodule'
-                }
-            }
+            ...config,
         });
 
         this.constructs.set('auth-cognito', cognito );
