@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.1-alpha.0](https://github.com/ten24group/fw24-modules/compare/v0.0.6...v0.1.1-alpha.0) (2024-05-22)
+
+
+### Bug Fixes
+
+* errors due to missing user-pool name when none provided ([d9ef633](https://github.com/ten24group/fw24-modules/commit/d9ef633f3b795aaf54d3bc05a3c9c0d2ba72e561))
+
 ### [0.0.6](https://github.com/ten24group/fw24-modules/compare/v0.0.5...v0.0.6) (2024-05-15)
 
 
