@@ -1,4 +1,4 @@
-import { Controller, APIGatewayController, Get, Request, Response, Post, Authorizer } from '@ten24group/fw24';
+import { Controller, APIController, Request, Response, Post, Authorizer, TestComplexValidationResult, InputValidationRule  } from '@ten24group/fw24';
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 // import cognito client
@@ -7,6 +7,73 @@ import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand }
 
 const identityProviderClient = new CognitoIdentityProviderClient({});
 const identityClient = new CognitoIdentityClient({});
+
+const customPasswordValidator = (inputValue: any): TestComplexValidationResult => {
+	const result: TestComplexValidationResult = {
+		pass: true
+	};
+
+	const pattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@.#$!%*?&])[A-Za-z\d@.#$!^%*?&]{8,20}$/
+	
+	result.pass = pattern.test(inputValue);
+
+	if(!result.pass){
+
+		/*
+			- At least one lowercase alphabet i.e. [a-z]
+			- At least one uppercase alphabet i.e. [A-Z]
+			- At least one Numeric digit i.e. [0-9]
+			- At least one special character i.e. [`@`, `$`, `.`, `#`, `!`, `%`, `*`, `?`, `&`, `^`]
+			- Also, the total length must be in the range [8-20]
+		*/
+
+		const expected: Array<string> = [];
+
+		if (!/[a-z]/.test(inputValue)) {
+			expected.push('one lowercase alphabet');
+		}
+		if (!/[A-Z]/.test(inputValue)){
+			expected.push('one uppercase alphabet');
+		}
+		if (!/[\d]/.test(inputValue)){
+			expected.push('one Numeric digit');
+		}
+		if (!/[!@#$%^&*.?]/.test(inputValue)){
+			expected.push('one special character');
+		}
+
+		const strengths = ["Good", "Medium strong", "Weak", "very Weak" ]; 
+
+		result.received = [ '*'.repeat(inputValue?.length ?? 0 ), strengths[expected?.length ] ];
+		result.expected = [ 'at least', expected.join(', ')];
+
+		result.customMessageId = "validation.http.body.password.pattern.validator";
+	}
+
+	return result;
+}
+
+type EmailAndPassword = {
+	email: string, 
+	password: string,
+}
+
+const emailAndPasswordValidations: InputValidationRule<EmailAndPassword> = {
+	email: {
+		required: true,
+		datatype: 'email',
+	}, 
+	password: {
+		required: true,
+		/*
+			minLength: 8,
+			maxLength: 20,
+			pattern: {
+				validator: (inputVal: any) => Promise.resolve(customPasswordValidator(inputVal)),
+			}
+		*/
+	}
+} as const;
 
 @Controller('mauth', { 
 	authorizer: [{
@@ -18,7 +85,7 @@ const identityClient = new CognitoIdentityClient({});
 		{ name: 'identityPoolID', prefix: 'authmodule' }
 	]
 })
-export class AuthController extends APIGatewayController {	
+export class AuthController extends APIController {	
 	
 	async initialize() {
         // register DI factories
@@ -26,16 +93,24 @@ export class AuthController extends APIGatewayController {
     }
 
 	/*
+		protected getOverriddenHttpRequestValidationErrorMessages(): Promise<Map<string, string>> {
+			return Promise.resolve(new Map(
+				Object.entries({
+					"validation.http.body.password.pattern.validator": "Password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
+					"validation.http.body.newPassword.pattern.validator": "New password '{received}' is '{refinedReceived}'; Please add {validationName} {validationValue}",
+				})
+			))
+		}
+	*/
+	/*
 	Cognito signup, signin and verify email methods
 	*/
-	@Post('/signup')
+	@Post('/signup', { validations: emailAndPasswordValidations } )
 	async signup(req: Request, res: Response) {
-		const {email, password} = req.body as { email?: string; password?: string };
-		const userPoolClientId = this.getUserPoolClientId();
+		
+		const {email, password} = req.body as EmailAndPassword;
 
-		if (email === undefined || password === undefined) {
-			return res.status(400).end('Missing email or password');
-		}
+		const userPoolClientId = this.getUserPoolClientId();
 
 		await identityProviderClient.send(
 			new SignUpCommand({
@@ -51,17 +126,17 @@ export class AuthController extends APIGatewayController {
 			}),
 		);
 		
-		return res.send('User Signed Up');
+		return res.json({
+			message: 'User Signed Up'
+		});
 	}
 
-	@Post('/signin')
+	@Post('/signin', { validations: emailAndPasswordValidations } )
 	async signin(req: Request, res: Response) {
-		const {email, password} = req.body as { email?: string; password?: string };
-		const userPoolClientId = this.getUserPoolClientId();
+		
+		const {email, password} = req.body as EmailAndPassword;
 
-		if (email === undefined || password === undefined) {
-			return res.status(400).end('Missing email or password');
-		}
+		const userPoolClientId = this.getUserPoolClientId();
 
 		const result = await identityProviderClient.send(
 			new InitiateAuthCommand({
@@ -77,19 +152,19 @@ export class AuthController extends APIGatewayController {
 		const idToken = result.AuthenticationResult?.IdToken;
 		
 		if (idToken === undefined) {
-			return res.status(401).end('Authentication failed');
+			return res.status(401).json({
+				message: 'Authentication failed'
+			});
 		}
 
 		return res.json(result.AuthenticationResult);
 	}
 
-	@Post('/signout')
+	@Post('/signout', {
+		validations: { accessToken: { required: true } }
+	})
 	async signout(req: Request, res: Response) {
 		const {accessToken} = req.body as { accessToken: string };
-
-		if (accessToken === undefined) {
-			return res.status(400).end('Missing Token');
-		}
 
 		const result = await identityProviderClient.send(
 			new GlobalSignOutCommand({
@@ -98,17 +173,20 @@ export class AuthController extends APIGatewayController {
 		);
 		this.logger.debug('result', result);
 
-		return res.send('User logged out');
+		return res.json({
+			message: 'User logged out'
+		});
 	}
 
-	@Post('/verify')
+	@Post('/verify', {
+		validations: {
+			code: { required: true },
+			email: { required: true, datatype: 'email' },
+		}
+	})
 	async verify(req: Request, res: Response) {
 		const {email, code} = req.body as { email?: string; code?: string };
 		const userPoolClientId = this.getUserPoolClientId();
-
-		if (email === undefined || code === undefined) {
-			return res.status(400).end('Missing email or code');
-		}
 
 		const result = await identityProviderClient.send(
 			new ConfirmSignUpCommand({
@@ -119,17 +197,19 @@ export class AuthController extends APIGatewayController {
 		);
 		this.logger.debug('result', result);
 
-		return res.send('User verified');
+		return res.json({ message: 'User verified' });
 	}
 
 	// change password
-	@Post('/changePassword')
+	@Post('/changePassword', {
+		validations: {
+			accessToken: { required: true },
+			oldPassword: { required: true },
+			newPassword: { required: true }
+		}
+	})
 	async changePassword(req: Request, res: Response) {
 		const {accessToken, oldPassword, newPassword} = req.body as { accessToken: string; oldPassword: string; newPassword: string };
-
-		if (accessToken === undefined || oldPassword === undefined || newPassword === undefined) {
-			return res.status(400).end('Missing accessToken, oldPassword or newPassword');
-		}
 
 		const result = await identityProviderClient.send(
 			new ChangePasswordCommand({
@@ -141,17 +221,17 @@ export class AuthController extends APIGatewayController {
 
 		this.logger.debug('newPasswordResult', result);
 
-		return res.send('Password changed');
+		return res.json({ message: 'Password changed' });
 	}
 
 	// forgot password route
-	@Post('/forgotPassword')
+	@Post('/forgotPassword', {
+		validations: {
+			email: { required: true, datatype: 'email' },
+		}
+	})
 	async forgotPassword(req: Request, res: Response) {
 		const {email} = req.body as { email: string };
-
-		if (email === undefined) {
-			return res.status(400).end('Missing email');
-		}
 
 		const result = await identityProviderClient.send(
 			new ForgotPasswordCommand({
@@ -162,17 +242,19 @@ export class AuthController extends APIGatewayController {
 
 		this.logger.debug('result', result);
 
-		return res.send('Password reset email sent');
+		return res.json({ message: 'Password reset email sent' });
 	}
 	
 	// confirm forgot password
-	@Post('/confirmForgotPassword')
+	@Post('/confirmForgotPassword', {
+		validations: {
+			code: { required: true },
+			email: { required: true, datatype: 'email' },
+			newPassword: { required: true },
+		}
+	})
 	async confirmForgotPassword(req: Request, res: Response) {
 		const {email, code, newPassword} = req.body as { email: string; code: string; newPassword: string };
-
-		if (email === undefined || code === undefined || newPassword === undefined) {
-			return res.status(400).end('Missing email, code or newPassword');
-		}
 
 		const result = await identityProviderClient.send(
 			new ConfirmForgotPasswordCommand({
@@ -185,18 +267,19 @@ export class AuthController extends APIGatewayController {
 
 		this.logger.debug('result', result);
 
-		return res.send('Password reset');
+		return res.json({ message: 'Password reset'});
 	}
 	
 	// Add user to group
 	@Authorizer({type: 'AWS_IAM', requireRouteInGroupConfig: true})
-	@Post('/addUserToGroup')
+	@Post('/addUserToGroup', {
+		validations: {
+			email: { required: true, datatype: 'email' },
+			groupName: { required: true },
+		}
+	})
 	async addUserToGroup(req: Request, res: Response) {
 		const {email, groupName} = req.body as { email: string; groupName: string };
-
-		if (email === undefined || groupName === undefined) {
-			return res.status(400).end('Missing email or groupName');
-		}
 
 		const result = await identityProviderClient.send(
 			new AdminAddUserToGroupCommand({
@@ -208,11 +291,15 @@ export class AuthController extends APIGatewayController {
 
 		this.logger.debug('result', result);
 
-		return res.send('User added to group');
+		return res.json({ message: 'User added to group'});
 	}
 
 	// generate IAM Credentials from token
-	@Post('/getCredentials')
+	@Post('/getCredentials', {
+		validations: {
+			idToken: { required: true },
+		}
+	})
 	async getCredentials(req: Request, res: Response) {
 		const {idToken} = req.body as { idToken: string};
 
@@ -228,7 +315,7 @@ export class AuthController extends APIGatewayController {
 			this.logger.debug("Token is valid. Payload:", payload);
 		} catch {
 			this.logger.debug("Token not valid!");
-			return res.send('Token not valid');
+			throw new Error(`Invalid ID-Token: ${idToken}`);
 		}
 
 		const providerName = `cognito-idp.us-east-1.amazonaws.com/${this.getUserPoolID()}`;
