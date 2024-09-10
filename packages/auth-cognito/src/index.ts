@@ -1,12 +1,29 @@
-import { AbstractFw24Module, FW24Construct, AuthConstruct, IAuthConstructConfig, createLogger, LambdaFunctionProps, ILogger } from '@ten24group/fw24';
+import { AbstractFw24Module, AuthConstruct, createLogger, DIModule, FW24Construct, ILogger, LambdaFunctionProps } from '@ten24group/fw24';
 import { join } from 'path';
 
-export interface IAuthModuleConfig extends IAuthConstructConfig {
-    
-}
+import { AuthServiceDIToken } from './const';
+import { IAuthModuleConfig } from './interfaces';
+import { CognitoService } from './services/cognito-service';
+import { SharedAuthClient } from './shared-auth-client';
 
+import { Auth } from "@ten24group/fw24-common";
+
+
+@DIModule({
+    providers: [
+        { 
+            provide: AuthServiceDIToken, 
+            useClass: CognitoService 
+        },
+        {
+            provide: Auth.AuthModuleClientDIToken,
+            useClass: SharedAuthClient
+        }
+    ],
+    exports: [ Auth.AuthModuleClientDIToken ] // allow other modules to use the AuthModuleClient
+})
 export class AuthModule extends AbstractFw24Module {
-    readonly logger: ILogger = createLogger(AuthConstruct.name);
+    readonly logger: ILogger = createLogger(AuthModule.name);
 
     protected constructs: Map<string, FW24Construct>; 
 
