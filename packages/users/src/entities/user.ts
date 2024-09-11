@@ -23,7 +23,10 @@ export const createUserSchema = () => createEntitySchema({
 			type: 'string',
 			required: true,
 			readOnly: true,
-			isIdentifier: true,
+			isVisible: false,
+			isEditable: false,
+			isCreatable: false,
+			isIdentifier: true, // this is required to make the listing actions work
 			default: () => randomUUID()
 		},
 		firstName: {
@@ -47,14 +50,23 @@ export const createUserSchema = () => createEntitySchema({
 			type: "string",
 			readOnly: true,
 			required: true,
+			isCreatable: false,
+			isEditable: false,
+			isListable: false,
+			fieldType: 'datetime',
+			name: "Created Date",
 			default: () => new Date().toISOString(),
 			set: () => new Date().toISOString(),
 		},
 		updatedAt:{
 			type: "string",
 			watch: "*", // will be set every time any prop is updated
-			required: true,
 			readOnly: true,
+			isCreatable: false,
+			isEditable: false,
+			isListable: false,
+			fieldType: 'datetime',
+			name: "Updated Date",
 			default: () => new Date().toISOString(),
 			set: () => new Date().toISOString(),
 		},
