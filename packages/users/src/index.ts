@@ -49,6 +49,3 @@ export class UsersModule extends AbstractFw24Module {
         return [];
     }
 }
-
-const { container } = DIContainer.ROOT.module(UsersModule);
-export { container as UsersModuleContainer };
