@@ -1,7 +1,8 @@
 import {BaseEntityController, Controller, type ILogger, Inject, createLogger } from '@ten24group/fw24';
 import type { UserSchemaType } from '../entities/user';
-import { UserService } from '../services/user';
 import { UsersModule } from '..';
+import { UserService } from '../services/user';
+import { Auth } from '@ten24group/fw24-common';
 
 @Controller('user', {
 	authorizer: [
@@ -11,9 +12,15 @@ import { UsersModule } from '..';
 		{ name: 'userPoolClientID', prefix: 'authmodule' },
 		{ name: 'userPoolID', prefix: 'authmodule' }
 	],
+	policies: [ 
+		{ 
+			name: Auth.AuthModulePolicy_AllowCreateUserAuth, 
+			isOptional: true 
+		},
+	],
 	resourceAccess: {
-		// TODO: use DI to provide these configurations
-		tables: ['users_tbl'] 
+		// provide the table name from the environment using some convention
+		tables: ['bcs_events']
 	},
 	module: { providedBy: UsersModule }
 })

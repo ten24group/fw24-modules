@@ -50,7 +50,7 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 				userId: created.data.userId,
 				email: created.data.email,
 				password: payload.password,
-				groups: ['user'], // TODO: groups support for user
+				groups: ['admin'], // TODO: groups support for groups from admin-UI
 			});
 
 			this.logger.info("Successfully created user auth records for: ", created.data);

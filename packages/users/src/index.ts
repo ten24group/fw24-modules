@@ -1,4 +1,4 @@
-import { AbstractFw24Module, FW24Construct, createLogger, ILogger, DIModule, DIContainer } from '@ten24group/fw24';
+import { AbstractFw24Module, FW24Construct, createLogger, ILogger, DIModule } from '@ten24group/fw24';
 import { UserSchemaDIToken } from './const';
 import { createUserSchema } from './entities/user';
 import { IUsersModuleConfig } from './interfaces';
