@@ -1,5 +1,5 @@
 import { AbstractFw24Module, FW24Construct, createLogger, ILogger, DIModule } from '@ten24group/fw24';
-import { UserSchemaDIToken } from './const';
+import { USER_MODULE_TABLE_NAME, UserSchemaDIToken } from './const';
 import { createUserSchema } from './entities/user';
 import { IUsersModuleConfig } from './interfaces';
 
@@ -17,10 +17,6 @@ export class UsersModule extends AbstractFw24Module {
         super(config);
     }
 
-    getName(): string {
-        return 'UsersModule';
-    }
-
     getBasePath(): string {
         return __dirname;
     }
@@ -29,23 +25,9 @@ export class UsersModule extends AbstractFw24Module {
         return new Map<string, FW24Construct>();
     }
 
-    getQueuesDirectory(): string {
-        return '';
-    }
-
-    getQueueFileNames(): string[] {
-        return [];
-    }
-
-    getTasksDirectory(): string {
-        return '';
-    }
-
-    getTaskFileNames(): string[] {
-        return [];
-    }
-
-    getDependencies(): string[] {
-        return [];
+    getExportedEnvironmentVariables(): Map<string, string> {
+        const envVars = new Map<string, string>();
+        envVars.set(USER_MODULE_TABLE_NAME, this.config.tableName);
+        return envVars;
     }
 }

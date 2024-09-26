@@ -3,24 +3,26 @@ import type { UserSchemaType } from '../entities/user';
 import { UsersModule } from '..';
 import { UserService } from '../services/user';
 import { Auth } from '@ten24group/fw24-common';
+import { USER_MODULE_TABLE_NAME } from '../const';
 
 @Controller('user', {
-	authorizer: [
+	authorizer: 
 		{ type: 'AWS_IAM', groups: ['admin'] },
-	],
+	
 	env: [
 		{ name: 'userPoolClientID', prefix: 'authmodule' },
 		{ name: 'userPoolID', prefix: 'authmodule' }
 	],
 	policies: [ 
 		{ 
-			name: Auth.AuthModulePolicy_AllowCreateUserAuth, 
+			name: Auth.AuthModulePolicy_AllowCreateUserAuth,
+			prefix: 'AuthModule',
 			isOptional: true 
 		},
 	],
 	resourceAccess: {
 		// provide the table name from the environment using some convention
-		tables: ['bcs_events']
+		tables: [`env:${UsersModule.name}:${USER_MODULE_TABLE_NAME}`]
 	},
 	module: { providedBy: UsersModule }
 })

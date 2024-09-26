@@ -60,32 +60,12 @@ export class AuthModule extends AbstractFw24Module {
 
     }
 
-    getName(): string {
-        return 'AuthModule';
-    }
-
     getBasePath(): string {
         return __dirname;
     }
 
     getConstructs(): Map<string, FW24Construct> {
         return this.constructs;
-    }
-
-    getQueuesDirectory(): string {
-        return '';
-    }
-
-    getQueueFileNames(): string[] {
-        return [];
-    }
-
-    getTasksDirectory(): string {
-        return '';
-    }
-
-    getTaskFileNames(): string[] {
-        return [];
     }
 
     getDependencies(): string[] {
