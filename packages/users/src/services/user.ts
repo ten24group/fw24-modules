@@ -4,16 +4,20 @@ import {
 	createLogger,
 	DI_TOKENS,
 	DIContainer,
+	EntityIdentifiersTypeFromSchema,
+	EntityResponseItemTypeFromSchema,
+	EntitySelections,
 	ILogger,
 	Inject,
 	InjectContainer,
 	Service,
+	UpdateEntityItemTypeFromSchema,
 } from '@ten24group/fw24';
 import { EntityConfiguration } from 'electrodb';
 
 import { UsersModule } from '../';
 import { UserSchemaType } from '../entities/user';
-import { UserSchemaDIToken } from '../const';
+import { USER_MODULE_NEW_USER_GROUPS, UserSchemaDIToken } from '../const';
 
 import { Auth } from "@ten24group/fw24-common";
 
@@ -38,24 +42,50 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 	){
 		super(schema, entityConfigurations, container);
 	}
+	public getDefaultSerializationAttributeNames(): EntitySelections<UserSchemaType>{
+		const ss = super.getDefaultSerializationAttributeNames(); 
+		return (ss as Array<string>).filter((s) => s !== 'password');
+	}
 
 	public async create( payload: CreateEntityItemTypeFromSchema<UserSchemaType> ) {
 		const created = await super.create(payload);
 
 		// create user's auth records
 		if(created.data && this.authModuleClient){
+
 			this.logger.info("Creating user auth records for: ", created.data);
 
 			await this.authModuleClient.createUserAuth({
 				userId: created.data.userId,
-				email: created.data.email,
+				email: payload.email,
 				password: payload.password,
-				groups: ['admin'], // TODO: groups support for groups from admin-UI
+				groups: payload.groups
 			});
 
 			this.logger.info("Successfully created user auth records for: ", created.data);
 		}
 		
 		return created;
+    }
+
+	public async update(
+		identifiers: EntityIdentifiersTypeFromSchema<UserSchemaType>, 
+		data: UpdateEntityItemTypeFromSchema<UserSchemaType>
+	): Promise<any> {
+		
+		const updated = await super.update(identifiers, data);
+
+		const user = await super.get({
+			identifiers
+		});
+
+		if(data.groups){
+			await this.authModuleClient.setUserGroups({
+				email: user!.email,
+				groups: data.groups
+			});
+		}
+
+		return updated;
     }
 }

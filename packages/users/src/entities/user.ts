@@ -40,10 +40,28 @@ export const createUserSchema = () => createEntitySchema({
 			type: 'string',
 			required: true,
 		},
+		groups: {
+			type: 'list',
+			required: true,
+			fieldType: 'multi-select',
+			items: { type: 'string'},
+			options: {
+				apiMethod: 'GET',
+				apiUrl: '/user/new-user-group-options',
+				responseKey: 'groups'
+			},
+		},
 		password: {
 			type: 'string',
-			fieldType: 'password',
 			required: true,
+			isCreatable: true,
+			isEditable: false,
+			isFilterable: false,
+			isListable: false,
+			isSearchable: false,
+			isSortable: false,
+			fieldType: 'password',
+			set: () => undefined, // nothing is persisted in our DB
 		},
 		createdAt: {
 			// will be set once at the time of create

@@ -18,9 +18,20 @@ export class SharedAuthClient implements Auth.IAuthModuleClient {
 
         // TODO: is user-ID needed [multiple emails for same user, multiple accounts with same email ?? ]
 
+        await this.setUserGroups({email: options.email, groups: options.groups})
+    }
+
+    public async addUserToGroup(options: Auth.AddUserToGroupOptions ){
+        await this.authService.addUserToGroup(options.email, options.group);
+    }
+
+    public async setUserGroups(options: Auth.SetUserGroupsOptions ){
+        
+        options.groups = options.groups || [];
+
         await Promise.all( 
-            groups.map(
-                async group => await this.authService.addUserToGroup(options.email, group)
+            options.groups.map(
+                async group => await this.addUserToGroup({email: options.email, group})
             )
         );
     }
