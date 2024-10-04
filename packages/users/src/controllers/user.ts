@@ -2,8 +2,7 @@ import {BaseEntityController, Controller, Get, type ILogger, type Request, type 
 import type { UserSchemaType } from '../entities/user';
 import { UsersModule } from '..';
 import { UserService } from '../services/user';
-import { Auth } from '@ten24group/fw24-common';
-import { USER_MODULE_NEW_USER_GROUPS, USER_MODULE_TABLE_NAME, USER_MODULE_USER_APIS_AUTH_GROUPS } from '../const';
+import { AuthModulePolicy_AllowCreateUserAuth, USER_MODULE_NEW_USER_GROUPS, USER_MODULE_TABLE_NAME, USER_MODULE_USER_APIS_AUTH_GROUPS } from '../const';
 
 @Controller('user', {
 	authorizer: { 
@@ -18,7 +17,7 @@ import { USER_MODULE_NEW_USER_GROUPS, USER_MODULE_TABLE_NAME, USER_MODULE_USER_A
 	],
 	policies: [ 
 		{ 
-			name: Auth.AuthModulePolicy_AllowCreateUserAuth,
+			name: AuthModulePolicy_AllowCreateUserAuth,
 			prefix: 'AuthModule',
 			isOptional: true 
 		},

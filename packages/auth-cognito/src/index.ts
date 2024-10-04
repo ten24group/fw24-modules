@@ -1,11 +1,11 @@
 import { join } from 'path';
 import { AbstractFw24Module, AuthConstruct, createLogger, DIModule, FW24Construct, ILogger, LambdaFunctionProps } from '@ten24group/fw24';
-import { Auth } from "@ten24group/fw24-common";
-
-import { AuthServiceDIToken } from './const';
+import { AuthModuleClientDIToken, AuthModulePolicy_AllowCreateUserAuth, AuthServiceDIToken } from './const';
 import { IAuthModuleConfig } from './interfaces';
 import { CognitoService } from './services/cognito-service';
 import { SharedAuthClient } from './shared-auth-client';
+
+export * from './interfaces'
 
 @DIModule({
     providers: [
@@ -14,11 +14,11 @@ import { SharedAuthClient } from './shared-auth-client';
             useClass: CognitoService 
         },
         {
-            provide: Auth.AuthModuleClientDIToken,
+            provide: AuthModuleClientDIToken,
             useClass: SharedAuthClient
         }
     ],
-    exports: [ Auth.AuthModuleClientDIToken ] // allow other modules to use the AuthModuleClient
+    exports: [ AuthModuleClientDIToken ] // allow other modules to use the AuthModuleClient
 })
 export class AuthModule extends AbstractFw24Module {
     readonly logger: ILogger = createLogger(AuthModule.name);
@@ -74,7 +74,7 @@ export class AuthModule extends AbstractFw24Module {
 
     getExportedPolicies() {
         const policies = new Map();
-        policies.set(Auth.AuthModulePolicy_AllowCreateUserAuth, {
+        policies.set(AuthModulePolicy_AllowCreateUserAuth, {
             actions: ['cognito-idp:AdminAddUserToGroup'],
             resources: ['*'],
         });

@@ -1,16 +1,14 @@
 import { Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
-import { IAuthService } from "./interfaces";
+import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, SetUserGroupsOptions } from "./interfaces";
 
-import { Auth } from "@ten24group/fw24-common";
-
-export class SharedAuthClient implements Auth.IAuthModuleClient {
+export class SharedAuthClient implements IAuthModuleClient {
     
     constructor(
         @Inject(AuthServiceDIToken) private readonly authService: IAuthService
     ) {}
 
-    public async createUserAuth(options: Auth.CreateUserAuthenticationOptions): Promise<void> {
+    public async createUserAuth(options: CreateUserAuthenticationOptions): Promise<void> {
       
         const { userId: _userId, email, password, groups = [] } = options;
         
@@ -21,11 +19,11 @@ export class SharedAuthClient implements Auth.IAuthModuleClient {
         await this.setUserGroups({email: options.email, groups: options.groups})
     }
 
-    public async addUserToGroup(options: Auth.AddUserToGroupOptions ){
+    public async addUserToGroup(options: AddUserToGroupOptions ){
         await this.authService.addUserToGroup(options.email, options.group);
     }
 
-    public async setUserGroups(options: Auth.SetUserGroupsOptions ){
+    public async setUserGroups(options: SetUserGroupsOptions ){
         
         options.groups = options.groups || [];
 

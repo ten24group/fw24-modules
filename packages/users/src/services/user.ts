@@ -5,7 +5,6 @@ import {
 	DI_TOKENS,
 	DIContainer,
 	EntityIdentifiersTypeFromSchema,
-	EntityResponseItemTypeFromSchema,
 	EntitySelections,
 	ILogger,
 	Inject,
@@ -17,10 +16,8 @@ import { EntityConfiguration } from 'electrodb';
 
 import { UsersModule } from '../';
 import { UserSchemaType } from '../entities/user';
-import { USER_MODULE_NEW_USER_GROUPS, UserSchemaDIToken } from '../const';
-
-import { Auth } from "@ten24group/fw24-common";
-
+import { AuthModuleClientDIToken, UserSchemaDIToken } from '../const';
+import { type IAuthModuleClient } from '@ten24group/fw24-auth-cognito';
 
 @Service({providedIn: UsersModule})
 export class UserService extends BaseEntityService<UserSchemaType> {
@@ -34,8 +31,8 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 		@Inject(DI_TOKENS.DYNAMO_ENTITY_CONFIGURATIONS) 
 		readonly entityConfigurations: EntityConfiguration,
 		
-		@Inject(Auth.AuthModuleClientDIToken, { isOptional: true }) 
-		private readonly authModuleClient: Auth.IAuthModuleClient,
+		@Inject(AuthModuleClientDIToken, { isOptional: true }) 
+		private readonly authModuleClient: IAuthModuleClient,
 		
 		@InjectContainer() 
 		private readonly container: DIContainer,

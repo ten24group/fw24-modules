@@ -31,12 +31,12 @@
   "homepage": "https://github.com/ten24group/fw24-modules#readme",
   "devDependencies": {
     "@ten24group/fw24": "file:../../../fw24",
+    "@ten24group/fw24-auth-cognito": "file:../auth-cognito",
     "@types/node": "^20.12.7",
     "standard-version": "^9.5.0",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@ten24group/fw24-common": "file:../common",
     "electrodb": "^2.14.3"
   }
 }
