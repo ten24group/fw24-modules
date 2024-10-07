@@ -1,4 +1,4 @@
-import {BaseEntityController, Controller, Get, type ILogger, type Request, type Response, Inject, createLogger, toHumanReadableName } from '@ten24group/fw24';
+import {BaseEntityController, Controller, Get, type ILogger, type Request, type Response, Inject, createLogger, toHumanReadableName, resolveEnvValueFor } from '@ten24group/fw24';
 import type { UserSchemaType } from '../entities/user';
 import { UsersModule } from '..';
 import { UserService } from '../services/user';
@@ -40,7 +40,7 @@ export class UserController extends BaseEntityController<UserSchemaType> {
 	@Get('/new-user-group-options')
 	getNewUserGroupOptions(req: Request, res: Response): Response {
 
-		let groups = process.env[USER_MODULE_NEW_USER_GROUPS]?.split(',') || [];
+		let groups = resolveEnvValueFor({key: USER_MODULE_NEW_USER_GROUPS})?.split(',') || [];
 
 		this.logger.info("process env groups: ", groups);
 

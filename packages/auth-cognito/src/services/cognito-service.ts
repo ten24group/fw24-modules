@@ -2,6 +2,7 @@ import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, Conf
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import { IAuthService } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { resolveEnvValueFor } from "@ten24group/fw24";
 
 export class CognitoService implements IAuthService {
     
@@ -142,14 +143,14 @@ export class CognitoService implements IAuthService {
 
     // Utility functions
     private getIdentityPoolId() {
-        return process.env['identityPoolID'] || '';
+        return resolveEnvValueFor({key: 'identityPoolID'}) || '';
     }
 
     private getUserPoolClientId() {
-        return process.env['userPoolClientID'] || '';
+        return resolveEnvValueFor({key: 'userPoolClientID'}) || '';
     }
 
     private getUserPoolID() {
-        return process.env['userPoolID'] || '';
+        return resolveEnvValueFor({key: 'userPoolID'}) || '';
     }
 }
