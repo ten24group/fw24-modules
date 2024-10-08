@@ -28,8 +28,8 @@ export class UsersModule extends AbstractFw24Module {
     getExportedEnvironmentVariables(): Map<string, string> {
         const envVars = new Map<string, string>();
         envVars.set(USER_MODULE_TABLE_NAME, this.config.tableName);
-        envVars.set(USER_MODULE_NEW_USER_GROUPS, Array.isArray(this.config.newUserGroups) ? this.config.newUserGroups.join(',') : this.config.newUserGroups);
-        envVars.set(USER_MODULE_USER_APIS_AUTH_GROUPS, Array.isArray(this.config.userAPIsAuthGroups) ? this.config.userAPIsAuthGroups.join(',') : this.config.userAPIsAuthGroups);
+        envVars.set(USER_MODULE_NEW_USER_GROUPS, Array.isArray(this.config.userGroups) ? this.config.userGroups.join(',') : this.config.userGroups);
+        envVars.set(USER_MODULE_USER_APIS_AUTH_GROUPS, Array.isArray(this.config.apiAuthGroups) ? this.config.apiAuthGroups.join(',') : this.config.apiAuthGroups);
         return envVars;
     }
 }
