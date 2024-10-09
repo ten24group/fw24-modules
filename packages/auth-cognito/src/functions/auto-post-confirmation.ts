@@ -1,4 +1,5 @@
 import { AdminAddUserToGroupCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+import { resolveEnvValueFor } from '@ten24group/fw24';
 
 export const handler = async (event: any) => {
     console.log('::handler:: Event: ', event);
@@ -21,5 +22,5 @@ export const handler = async (event: any) => {
 }
 
 function getAutoUserSignupGroups() {
-    return process.env['autoSignupGroups'] || '';
+    return resolveEnvValueFor({key: 'autoSignupGroups' }) || '';
 }
