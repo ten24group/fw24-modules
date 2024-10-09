@@ -1,4 +1,4 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import { IAuthService } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
@@ -9,25 +9,25 @@ export class CognitoService implements IAuthService {
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
 
-    async signup(email: string, password: string): Promise<void> {
+    async signup(username: string, password: string): Promise<void> {
         const userPoolClientId = this.getUserPoolClientId();
 
         await this.identityProviderClient.send(
             new SignUpCommand({
                 ClientId: userPoolClientId,
-                Username: email,
+                Username: username,
                 Password: password,
                 UserAttributes: [
                     {
                         Name: 'email',
-                        Value: email,
+                        Value: username,
                     },
                 ],
             })
         );
     }
 
-    async signin(email: string, password: string): Promise<any> {
+    async signin(username: string, password: string): Promise<any> {
         const userPoolClientId = this.getUserPoolClientId();
 
         const result = await this.identityProviderClient.send(
@@ -35,7 +35,7 @@ export class CognitoService implements IAuthService {
                 AuthFlow: 'USER_PASSWORD_AUTH',
                 ClientId: userPoolClientId,
                 AuthParameters: {
-                    USERNAME: email,
+                    USERNAME: username,
                     PASSWORD: password,
                 },
             })
@@ -52,13 +52,13 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async verify(email: string, code: string): Promise<void> {
+    async verify(username: string, code: string): Promise<void> {
         const userPoolClientId = this.getUserPoolClientId();
 
         await this.identityProviderClient.send(
             new ConfirmSignUpCommand({
                 ClientId: userPoolClientId,
-                Username: email,
+                Username: username,
                 ConfirmationCode: code,
             })
         );
@@ -74,34 +74,80 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async forgotPassword(email: string): Promise<void> {
+    async forgotPassword(username: string): Promise<void> {
         await this.identityProviderClient.send(
             new ForgotPasswordCommand({
                 ClientId: this.getUserPoolClientId(),
-                Username: email,
+                Username: username,
             })
         );
     }
 
-    async confirmForgotPassword(email: string, code: string, newPassword: string): Promise<void> {
+    async confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void> {
         await this.identityProviderClient.send(
             new ConfirmForgotPasswordCommand({
                 ClientId: this.getUserPoolClientId(),
-                Username: email,
+                Username: username,
                 ConfirmationCode: code,
                 Password: newPassword,
             })
         );
     }
 
-    async addUserToGroup(email: string, groupName: string): Promise<void> {
+    async addUserToGroup(username: string, groupName: string): Promise<void> {
         await this.identityProviderClient.send(
             new AdminAddUserToGroupCommand({
                 UserPoolId: this.getUserPoolID(),
                 GroupName: groupName,
-                Username: email,
+                Username: username,
             })
         );
+    }
+
+    async removeUserFromGroup(username: string, groupName: string): Promise<void> {
+        await this.identityProviderClient.send(
+            new AdminRemoveUserFromGroupCommand({
+                UserPoolId: this.getUserPoolID(),
+                GroupName: groupName,
+                Username: username,
+            })
+        );
+    }
+
+    async getUserGroupNames(username: string): Promise<Array<string>> {
+        
+        //! NOTE: if there are a lot of groups this function will only return first 20
+        const groupsList = await this.identityProviderClient.send(
+            new AdminListGroupsForUserCommand({
+                UserPoolId: this.getUserPoolID(),
+                Username: username,
+                Limit: 20
+            })
+        );
+
+        return groupsList.Groups?.map( g => g.GroupName ?? '' ) ?? [];
+    }
+
+    async setUserGroups(username: string, newGroups: string[]): Promise<void> {
+        const existingUserGroups = await this.getUserGroupNames(username);
+
+        const promises = [];
+
+        // collect only the new groups to be added
+        for(const group of newGroups){
+            if(!existingUserGroups.includes(group)){
+                promises.push(this.addUserToGroup(username, group))
+            }
+        }
+
+        // collect any existing-groups which are not part of new-groups for removal
+        for(const group of existingUserGroups){
+            if(!newGroups.includes(group)){
+                promises.push(this.removeUserFromGroup(username, group))
+            }
+        }
+
+        await Promise.all(promises);
     }
 
     async getCredentials(idToken: string): Promise<any> {

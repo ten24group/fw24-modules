@@ -53,8 +53,7 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 			this.logger.info("Creating user auth records for: ", created.data);
 
 			await this.authModuleClient.createUserAuth({
-				userId: created.data.userId,
-				email: payload.email,
+				username: payload.email,
 				password: payload.password,
 				groups: payload.groups
 			});
@@ -72,13 +71,11 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 		
 		const updated = await super.update(identifiers, data);
 
-		const user = await super.get({
-			identifiers
-		});
+		const user = await super.get({identifiers});
 
 		if(data.groups){
 			await this.authModuleClient.setUserGroups({
-				email: user!.email,
+				username: user!.email,
 				groups: data.groups
 			});
 		}

@@ -8,29 +8,26 @@ export class SharedAuthClient implements IAuthModuleClient {
         @Inject(AuthServiceDIToken) private readonly authService: IAuthService
     ) {}
 
-    public async createUserAuth(options: CreateUserAuthenticationOptions): Promise<void> {
+    async createUserAuth(options: CreateUserAuthenticationOptions): Promise<void> {
       
-        const { userId: _userId, email, password, groups = [] } = options;
+        const { username, password, groups = [] } = options;
         
-        const _user = await this.authService.signup(email, password);
+        await this.authService.signup(username, password);
 
-        // TODO: is user-ID needed [multiple emails for same user, multiple accounts with same email ?? ]
-
-        await this.setUserGroups({email: options.email, groups: options.groups})
+        await this.authService.setUserGroups(username, groups);
     }
 
-    public async addUserToGroup(options: AddUserToGroupOptions ){
-        await this.authService.addUserToGroup(options.email, options.group);
+    async addUserToGroup(options: AddUserToGroupOptions ): Promise<void> {
+        await this.authService.addUserToGroup(options.username, options.group);
     }
 
-    public async setUserGroups(options: SetUserGroupsOptions ){
-        
-        options.groups = options.groups || [];
+    async setUserGroups(options: SetUserGroupsOptions ): Promise<void> {
+        const { username, groups = [] } = options;
 
-        await Promise.all( 
-            options.groups.map(
-                async group => await this.addUserToGroup({email: options.email, group})
-            )
-        );
+        await this.authService.setUserGroups(username, groups);
+    }
+
+    async removeUserFromGroup(username: string, groupName: string): Promise<void> {
+        await this.authService.removeUserFromGroup(username, groupName);
     }
 }

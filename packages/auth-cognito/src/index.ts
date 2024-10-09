@@ -75,7 +75,11 @@ export class AuthModule extends AbstractFw24Module {
     getExportedPolicies() {
         const policies = new Map();
         policies.set(AuthModulePolicy_AllowCreateUserAuth, {
-            actions: ['cognito-idp:AdminAddUserToGroup'],
+            actions: [
+                'cognito-idp:AdminAddUserToGroup', 
+                'cognito-idp:AdminListGroupsForUser',
+                'cognito-idp:AdminRemoveUserFromGroup',
+            ],
             resources: ['*'],
         });
         return policies;
