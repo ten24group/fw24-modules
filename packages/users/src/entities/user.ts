@@ -40,11 +40,10 @@ export const createUserSchema = () => createEntitySchema({
 			type: 'string',
 			required: true,
 		},
-		groups: {
-			type: 'list',
+		group: {
+			type: 'string',
 			required: true,
-			fieldType: 'multi-select',
-			items: { type: 'string'},
+			fieldType: 'select',
 			options: {
 				apiMethod: 'GET',
 				apiUrl: '/user/new-user-group-options',

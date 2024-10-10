@@ -55,7 +55,7 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 			await this.authModuleClient.createUserAuth({
 				username: payload.email,
 				password: payload.password,
-				groups: payload.groups
+				groups: [ payload.group ]
 			});
 
 			this.logger.info("Successfully created user auth records for: ", created.data);
@@ -73,10 +73,10 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 
 		const user = await super.get({identifiers});
 
-		if(data.groups){
+		if(data.group){
 			await this.authModuleClient.setUserGroups({
 				username: user!.email,
-				groups: data.groups
+				groups: [ data.group ]
 			});
 		}
 
