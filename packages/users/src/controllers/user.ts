@@ -2,18 +2,18 @@ import {BaseEntityController, Controller, Get, type ILogger, type Request, type 
 import type { UserSchemaType } from '../entities/user';
 import { UsersModule } from '..';
 import { UserService } from '../services/user';
-import { AuthModulePolicy_AllowCreateUserAuth, USER_MODULE_NEW_USER_GROUPS, USER_MODULE_TABLE_NAME, USER_MODULE_USER_APIS_AUTH_GROUPS } from '../const';
+import { AuthModulePolicy_AllowCreateUserAuth, NEW_USER_GROUPS, TABLE_NAME, APIS_AUTH_GROUPS } from '../const';
 
 @Controller('user', {
 	authorizer: { 
 		type: 'AWS_IAM', 
-		groups: `env:${UsersModule.name}:${USER_MODULE_USER_APIS_AUTH_GROUPS}` 
+		groups: `env:${UsersModule.name}:${APIS_AUTH_GROUPS}` 
 	},
 
 	env: [
 		{ name: 'userPoolClientID', prefix: 'authmodule' },
 		{ name: 'userPoolID', prefix: 'authmodule' },
-		{ name: `${USER_MODULE_NEW_USER_GROUPS}`, prefix: UsersModule.name, }
+		{ name: `${NEW_USER_GROUPS}`, prefix: UsersModule.name, }
 	],
 	policies: [ 
 		{ 
@@ -24,7 +24,7 @@ import { AuthModulePolicy_AllowCreateUserAuth, USER_MODULE_NEW_USER_GROUPS, USER
 	],
 	resourceAccess: {
 		// provide the table name from the environment using some convention
-		tables: [`env:${UsersModule.name}:${USER_MODULE_TABLE_NAME}`]
+		tables: [`env:${UsersModule.name}:${TABLE_NAME}`]
 	},
 	module: { providedBy: UsersModule }
 })
@@ -40,7 +40,7 @@ export class UserController extends BaseEntityController<UserSchemaType> {
 	@Get('/new-user-group-options')
 	getNewUserGroupOptions(req: Request, res: Response): Response {
 
-		let groups = resolveEnvValueFor({key: USER_MODULE_NEW_USER_GROUPS})?.split(',') || [];
+		let groups = resolveEnvValueFor({key: NEW_USER_GROUPS})?.split(',') || [];
 
 		this.logger.info("process env groups: ", groups);
 
