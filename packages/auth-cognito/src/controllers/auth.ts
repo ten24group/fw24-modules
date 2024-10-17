@@ -68,11 +68,23 @@ export class AuthController extends APIController {
 
         const result = await this.authService.signin(email, password);
 
+        // if the login attempt returned a challenge let the client know
+        if('challengeName' in result){
+            return res.json( result );
+        }
+
         const idToken = result?.IdToken;
         if (idToken === undefined) {
-            return res.status(401).json({
+            
+            let response: any = {
                 message: 'Authentication failed'
-            });
+            };
+            
+            if(req.debugMode){
+                response = {...response, result}
+            }
+
+            return res.status(401).json(response);
         }
 
         return res.json(result);
