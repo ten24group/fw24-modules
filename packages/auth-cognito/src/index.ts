@@ -1,12 +1,27 @@
-import { AbstractFw24Module, FW24Construct, AuthConstruct, IAuthConstructConfig, createLogger, LambdaFunctionProps, ILogger } from '@ten24group/fw24';
 import { join } from 'path';
+import { AbstractFw24Module, AuthConstruct, createLogger, DIModule, FW24Construct, ILogger, LambdaFunctionProps } from '@ten24group/fw24';
+import { AuthModuleClientDIToken, AuthModulePolicy_AllowCreateUserAuth, AuthServiceDIToken } from './const';
+import { IAuthModuleConfig } from './interfaces';
+import { CognitoService } from './services/cognito-service';
+import { SharedAuthClient } from './shared-auth-client';
 
-export interface IAuthModuleConfig extends IAuthConstructConfig {
-    
-}
+export * from './interfaces'
 
+@DIModule({
+    providers: [
+        { 
+            provide: AuthServiceDIToken, 
+            useClass: CognitoService 
+        },
+        {
+            provide: AuthModuleClientDIToken,
+            useClass: SharedAuthClient
+        }
+    ],
+    exports: [ AuthModuleClientDIToken ] // allow other modules to use the AuthModuleClient
+})
 export class AuthModule extends AbstractFw24Module {
-    readonly logger: ILogger = createLogger(AuthConstruct.name);
+    readonly logger: ILogger = createLogger(AuthModule.name);
 
     protected constructs: Map<string, FW24Construct>; 
 
@@ -45,10 +60,6 @@ export class AuthModule extends AbstractFw24Module {
 
     }
 
-    getName(): string {
-        return 'AuthModule';
-    }
-
     getBasePath(): string {
         return __dirname;
     }
@@ -57,23 +68,24 @@ export class AuthModule extends AbstractFw24Module {
         return this.constructs;
     }
 
-    getQueuesDirectory(): string {
-        return '';
-    }
-
-    getQueueFileNames(): string[] {
-        return [];
-    }
-
-    getTasksDirectory(): string {
-        return '';
-    }
-
-    getTaskFileNames(): string[] {
-        return [];
-    }
-
     getDependencies(): string[] {
         return this.dependencies;
+    }
+
+    getExportedPolicies() {
+        const policies = new Map();
+        policies.set(AuthModulePolicy_AllowCreateUserAuth, {
+            actions: [
+                'cognito-idp:AdminCreateUser',
+                'cognito-idp:AdminAddUserToGroup', 
+                'cognito-idp:AdminSetUserPassword',
+                'cognito-idp:AdminResetUserPassword',
+                'cognito-idp:AdminListGroupsForUser',
+                'cognito-idp:AdminRemoveUserFromGroup',
+                'cognito-idp:AdminUpdateUserAttributes',
+            ],
+            resources: ['*'],
+        });
+        return policies;
     }
 }
