@@ -1,12 +1,27 @@
-import { AbstractFw24Module, FW24Construct, AuthConstruct, IAuthConstructConfig, createLogger, LambdaFunctionProps, ILogger } from '@ten24group/fw24';
 import { join } from 'path';
+import { AbstractFw24Module, AuthConstruct, createLogger, DIModule, FW24Construct, ILogger, LambdaFunctionProps, type ArrayElement } from '@ten24group/fw24';
+import { AuthModuleClientDIToken, AuthModulePolicy_AllowCreateUserAuth, AuthServiceDIToken, CUSTOM_MESSAGE_ADMIN_CREATE_USER, CUSTOM_MESSAGE_AUTHENTICATE, CUSTOM_MESSAGE_FORGOT_PASSWORD, CUSTOM_MESSAGE_RESEND_CODE, CUSTOM_MESSAGE_SIGN_UP, CUSTOM_MESSAGE_UPDATE_USER_ATTRIBUTE, CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE, CUSTOM_SUBJECT_ADMIN_CREATE_USER, CUSTOM_SUBJECT_AUTHENTICATE, CUSTOM_SUBJECT_FORGOT_PASSWORD, CUSTOM_SUBJECT_RESEND_CODE, CUSTOM_SUBJECT_SIGN_UP, CUSTOM_SUBJECT_UPDATE_USER_ATTRIBUTE, CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE } from './const';
+import { IAuthModuleConfig } from './interfaces';
+import { CognitoService } from './services/cognito-service';
+import { SharedAuthClient } from './shared-auth-client';
 
-export interface IAuthModuleConfig extends IAuthConstructConfig {
-    
-}
+export * from './interfaces'
 
+@DIModule({
+    providers: [
+        { 
+            provide: AuthServiceDIToken, 
+            useClass: CognitoService 
+        },
+        {
+            provide: AuthModuleClientDIToken,
+            useClass: SharedAuthClient
+        }
+    ],
+    exports: [ AuthModuleClientDIToken ] // allow other modules to use the AuthModuleClient
+})
 export class AuthModule extends AbstractFw24Module {
-    readonly logger: ILogger = createLogger(AuthConstruct.name);
+    readonly logger: ILogger = createLogger(AuthModule.name);
 
     protected constructs: Map<string, FW24Construct>; 
 
@@ -36,17 +51,69 @@ export class AuthModule extends AbstractFw24Module {
             }
         }
         this.logger.debug("AuthModule: ", config);
+
+        const allTriggers = [...(config.triggers ?? [])];
+        if(config.customMessageTemplates){
+            allTriggers.push(
+                this.makeCustomMessageHandlerTrigger(config.customMessageTemplates)!
+            );
+        }
         
         const cognito = new AuthConstruct({	
             ...config,
+            triggers: allTriggers,
         });
 
         this.constructs.set('auth-cognito', cognito );
 
     }
 
-    getName(): string {
-        return 'AuthModule';
+    makeCustomMessageHandlerTrigger( customMessageTemplates: IAuthModuleConfig['customMessageTemplates']): ArrayElement<IAuthModuleConfig['triggers']> | undefined {
+        
+        if(!customMessageTemplates){
+            return;
+        }
+
+        let environmentVariables: any = {};
+
+        if(customMessageTemplates.signup){
+            environmentVariables[CUSTOM_MESSAGE_SIGN_UP] = customMessageTemplates.signup.message;
+            environmentVariables[CUSTOM_SUBJECT_SIGN_UP] = customMessageTemplates.signup.subject;
+        }
+        if(customMessageTemplates.resendCode){
+            environmentVariables[CUSTOM_MESSAGE_RESEND_CODE] = customMessageTemplates.resendCode.message;
+            environmentVariables[CUSTOM_SUBJECT_RESEND_CODE] = customMessageTemplates.resendCode.subject;
+        }
+        if(customMessageTemplates.adminCreateUser){
+            environmentVariables[CUSTOM_MESSAGE_ADMIN_CREATE_USER] = customMessageTemplates.adminCreateUser.message;
+            environmentVariables[CUSTOM_SUBJECT_ADMIN_CREATE_USER] = customMessageTemplates.adminCreateUser.subject;
+        }
+        if(customMessageTemplates.forgotPassword){
+            environmentVariables[CUSTOM_MESSAGE_FORGOT_PASSWORD] = customMessageTemplates.forgotPassword.message;
+            environmentVariables[CUSTOM_SUBJECT_FORGOT_PASSWORD] = customMessageTemplates.forgotPassword.subject;
+        }
+        if(customMessageTemplates.authentication){
+            environmentVariables[CUSTOM_MESSAGE_AUTHENTICATE] = customMessageTemplates.authentication.message;
+            environmentVariables[CUSTOM_SUBJECT_AUTHENTICATE] = customMessageTemplates.authentication.subject;
+        }
+        if(customMessageTemplates.updateUserAttribute){
+            environmentVariables[CUSTOM_MESSAGE_UPDATE_USER_ATTRIBUTE] = customMessageTemplates.updateUserAttribute.message;
+            environmentVariables[CUSTOM_SUBJECT_UPDATE_USER_ATTRIBUTE] = customMessageTemplates.updateUserAttribute.subject;
+        }
+        if(customMessageTemplates.verifyUserAttribute){
+            environmentVariables[CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE] = customMessageTemplates.verifyUserAttribute.message;
+            environmentVariables[CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE] = customMessageTemplates.verifyUserAttribute.subject;
+        }
+
+        const customMessageHandlerTrigger: ArrayElement<IAuthModuleConfig['triggers']> = {
+            functionProps: {
+                entry: join(__dirname,'functions/custom-message.js'),
+                environmentVariables
+            },
+            trigger: 'CUSTOM_MESSAGE'
+        }
+
+        return customMessageHandlerTrigger;
     }
 
     getBasePath(): string {
@@ -57,23 +124,24 @@ export class AuthModule extends AbstractFw24Module {
         return this.constructs;
     }
 
-    getQueuesDirectory(): string {
-        return '';
-    }
-
-    getQueueFileNames(): string[] {
-        return [];
-    }
-
-    getTasksDirectory(): string {
-        return '';
-    }
-
-    getTaskFileNames(): string[] {
-        return [];
-    }
-
     getDependencies(): string[] {
         return this.dependencies;
+    }
+
+    getExportedPolicies() {
+        const policies = new Map();
+        policies.set(AuthModulePolicy_AllowCreateUserAuth, {
+            actions: [
+                'cognito-idp:AdminCreateUser',
+                'cognito-idp:AdminAddUserToGroup', 
+                'cognito-idp:AdminSetUserPassword',
+                'cognito-idp:AdminResetUserPassword',
+                'cognito-idp:AdminListGroupsForUser',
+                'cognito-idp:AdminRemoveUserFromGroup',
+                'cognito-idp:AdminUpdateUserAttributes',
+            ],
+            resources: ['*'],
+        });
+        return policies;
     }
 }
