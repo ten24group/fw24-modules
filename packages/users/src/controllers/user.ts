@@ -2,12 +2,12 @@ import {BaseEntityController, Controller, Get, type ILogger, type Request, type 
 import type { UserSchemaType } from '../entities/user';
 import { UsersModule } from '..';
 import { UserService } from '../services/user';
-import { AuthModulePolicy_AllowCreateUserAuth, NEW_USER_GROUPS, TABLE_NAME, APIS_AUTH_GROUPS } from '../const';
+import { AuthModulePolicy_AllowCreateUserAuth, NEW_USER_GROUPS, TABLE_NAME, ADMIN_USER_GROUPS } from '../const';
 
 @Controller('user', {
 	authorizer: { 
 		type: 'AWS_IAM', 
-		groups: `env:${UsersModule.name}:${APIS_AUTH_GROUPS}` 
+		groups: `env:${UsersModule.name}:${ADMIN_USER_GROUPS}` 
 	},
 
 	env: [
