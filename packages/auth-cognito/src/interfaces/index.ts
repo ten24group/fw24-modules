@@ -83,5 +83,34 @@ export interface IAuthModuleClient {
 }
 
 export interface IAuthModuleConfig extends IAuthConstructConfig {
-    
+    customMessageTemplates?: {
+        signup?: {
+            subject: string,
+            message: string,
+        },
+        adminCreateUser?: {
+            subject: string,
+            message: string,
+        },
+        resendCode?: {
+            subject: string,
+            message: string,
+        },
+        forgotPassword?: {
+            subject: string,
+            message: string,
+        },
+        updateUserAttribute?: {
+            subject: string,
+            message: string,
+        },
+        verifyUserAttribute?: {
+            subject: string,
+            message: string,
+        },
+        authentication?: {
+            subject: string,
+            message: string,
+        },
+    }
 }

@@ -124,6 +124,10 @@ export class CognitoService implements IAuthService {
             new ForgotPasswordCommand({
                 ClientId: this.getUserPoolClientId(),
                 Username: username,
+                ClientMetadata: {
+                    type: " Forgot-password",
+                    xxx: "yyy"
+                }
             })
         );
     }
