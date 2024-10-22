@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+      "noUnusedLocals": false,
+      "allowUnreachableCode": false,
+      "esModuleInterop": true,
+      "target": "ESNext",
+      "module": "commonjs",
+      "lib": [
+          "ESNext",
+          "DOM"
+      ],
+      "resolveJsonModule": true,
+      "noEmitOnError": true,
+      "declaration": true,
+      "strict": true,
+      "noImplicitAny": true,
+      "strictNullChecks": true,
+      "noImplicitThis": true,
+      "alwaysStrict": true,
+      "noUnusedParameters": false,
+      "noImplicitReturns": true,
+      "noFallthroughCasesInSwitch": true,
+      "inlineSourceMap": true,
+      "inlineSources": true,
+      "experimentalDecorators": true,
+      "strictPropertyInitialization": true,
+      "stripInternal": true,
+      "outDir": "dist",
+      "typeRoots": [
+          "./node_modules/@types"
+      ],
+      "types": [
+          "node",
+      ]
+  },
+  "include": [
+      "src/"
+  ],
+  "exclude": [
+      "node_modules"
+  ]
+}
