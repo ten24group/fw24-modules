@@ -123,11 +123,7 @@ export class CognitoService implements IAuthService {
         await this.identityProviderClient.send(
             new ForgotPasswordCommand({
                 ClientId: this.getUserPoolClientId(),
-                Username: username,
-                ClientMetadata: {
-                    type: " Forgot-password",
-                    xxx: "yyy"
-                }
+                Username: username
             })
         );
     }
