@@ -1,0 +1,45 @@
+{
+  "name": "@ten24group/fw24-pdf-renderer",
+  "version": "0.0.5",
+  "description": "PDF Renderer module for fw24",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "release": "npm run build && standard-version && git push --follow-tags && npm publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ten24group/fw24-modules.git"
+  },
+  "keywords": [
+    "fw24",
+    "framework24",
+    "serverless",
+    "framework"
+  ],
+  "author": "Ten24 Group, LLC",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ten24group/fw24-modules/issues"
+  },
+  "homepage": "https://github.com/ten24group/fw24-modules#readme",
+  "devDependencies": {
+    "@sparticuz/chromium": "^130.0.0",
+    "@ten24group/fw24": "file:../../../fw24",
+    "@types/node": "^20.12.7",
+    "standard-version": "^9.5.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.6.0"
+  }, 
+  "peerDependencies": {
+    "@sparticuz/chromium": "^130.0.0"
+  }
+}
