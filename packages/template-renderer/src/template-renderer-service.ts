@@ -1,6 +1,7 @@
 import { createLogger, ILogger, Injectable } from '@ten24group/fw24';
 
-import Handlebars from 'handlebars';
+import * as Handlebars from 'handlebars';
+
 import fs from 'fs/promises';
 
 export type TemplateFormat = 'html' | 'hbs' | 'text';
