@@ -5,6 +5,10 @@ interface ITemplateRendererModuleConfig {
 }
 
 @DIModule({
+    providers: [{
+        provide: TemplateRendererService,
+        useClass: TemplateRendererService,
+    }],
     exports: [TemplateRendererService]
 })
 class TemplateRendererModule extends AbstractFw24Module {

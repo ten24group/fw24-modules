@@ -5,6 +5,10 @@ interface IPDFRendererModuleConfig {
 }
 
 @DIModule({
+    providers: [{
+        provide: PDFRendererService,
+        useClass: PDFRendererService,
+    }],
     exports: [PDFRendererService]
 })
 class PDFRendererModule extends AbstractFw24Module {
