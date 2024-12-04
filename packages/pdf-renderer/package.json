@@ -1,6 +1,6 @@
 {
   "name": "@ten24group/fw24-pdf-renderer",
-  "version": "0.0.1",
+  "version": "0.1.1-beta.1",
   "description": "PDF Renderer module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "watch": "tsc -w",
-    "release": "npm run build && standard-version && git push --follow-tags && npm publish"
+    "release": "npm run build && standard-version --prerelease beta && git push --follow-tags && npm publish"
   },
   "repository": {
     "type": "git",
