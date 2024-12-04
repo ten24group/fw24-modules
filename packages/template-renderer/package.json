@@ -1,14 +1,17 @@
 {
-  "name": "@ten24group/fw24-auth-cognito",
-  "version": "0.1.1-alpha.1",
-  "description": "Cognito auth module for fw24",
+  "name": "@ten24group/fw24-template-renderer",
+  "version": "0.0.1",
+  "description": "Template-renderer module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "watch": "tsc -w",
-    "release": "npm run build && standard-version --prerelease alpha && git push --follow-tags && npm publish"
+    "release": "npm run build && standard-version && git push --follow-tags && npm publish"
   },
   "repository": {
     "type": "git",
@@ -22,11 +25,6 @@
   ],
   "author": "Ten24 Group, LLC",
   "license": "MIT",
-  "files": [
-    "LICENSE",
-    "README.md",
-    "dist"
-  ],
   "bugs": {
     "url": "https://github.com/ten24group/fw24-modules/issues"
   },
@@ -38,9 +36,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity": "^3.564.0",
-    "@aws-sdk/client-cognito-identity-provider": "^3.564.0",
-    "aws-jwt-verify": "^4.0.1"
+    "handlebars": "^4.7.8"
   },
   "peerDependencies": {
     "@ten24group/fw24": "^0.1.1-beta.1"
