@@ -11,7 +11,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "watch": "tsc -w",
-    "release": "npm run build && standard-version --prerelease beta && git push --follow-tags && npm publish"
+    "release": "npm run build && standard-version --no-git-tag-version --prerelease beta && git push --follow-tags && npm publish"
   },
   "repository": {
     "type": "git",
