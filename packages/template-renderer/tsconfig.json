@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
       "noUnusedLocals": false,
+      "skipLibCheck": true,
+      "moduleResolution": "node",
       "allowUnreachableCode": false,
       "esModuleInterop": true,
       "target": "ESNext",

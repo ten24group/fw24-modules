@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/ten24group/fw24-modules#readme",
   "devDependencies": {
-    "@ten24group/fw24": "file:../../../fw24",
+    "@ten24group/fw24": "^0.1.1-beta.1",
     "@types/node": "^20.12.7",
     "standard-version": "^9.5.0",
     "typescript": "^5.4.5"
@@ -39,5 +39,8 @@
     "@aws-sdk/client-cognito-identity": "^3.564.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.564.0",
     "aws-jwt-verify": "^4.0.1"
+  },
+  "peerDependencies": {
+    "@ten24group/fw24": "^0.1.1-beta.1"
   }
 }
