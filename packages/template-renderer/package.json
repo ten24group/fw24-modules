@@ -1,7 +1,7 @@
 {
-  "name": "@ten24group/fw24-auth-cognito",
-  "version": "0.0.6",
-  "description": "Cognito auth module for fw24",
+  "name": "@ten24group/fw24-template-renderer",
+  "version": "0.0.1",
+  "description": "Template-renderer module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "publishConfig": {
@@ -36,9 +36,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity": "^3.564.0",
-    "@aws-sdk/client-cognito-identity-provider": "^3.564.0",
-    "aws-jwt-verify": "^4.0.1"
+    "handlebars": "^4.7.8"
   },
   "peerDependencies": {
     "@ten24group/fw24": "^0.1.1-beta.1"
