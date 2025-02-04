@@ -1,31 +1,25 @@
 import {
 	BaseEntityService,
 	CreateEntityItemTypeFromSchema,
-	createLogger,
 	DI_TOKENS,
 	DIContainer,
 	EntityIdentifiersTypeFromSchema,
 	EntitySelections,
-	ILogger,
 	Inject,
 	InjectContainer,
-	Service,
+	InjectEntitySchema,
 	UpdateEntityItemTypeFromSchema,
 } from '@ten24group/fw24';
 import { EntityConfiguration } from 'electrodb';
 
-import { UsersModule } from '../';
 import { UserSchemaType } from '../entities/user';
-import { AuthModuleClientDIToken, UserSchemaDIToken } from '../const';
+import { AuthModuleClientDIToken } from '../const';
 import { type IAuthModuleClient } from '@ten24group/fw24-auth-cognito';
 
-@Service({providedIn: UsersModule})
 export class UserService extends BaseEntityService<UserSchemaType> {
 
-	readonly logger: ILogger = createLogger(UserService);
-
 	constructor(
-		@Inject(UserSchemaDIToken) 
+		@InjectEntitySchema('user') 
 		readonly schema: UserSchemaType,
 		
 		@Inject(DI_TOKENS.DYNAMO_ENTITY_CONFIGURATIONS) 
@@ -39,6 +33,7 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 	){
 		super(schema, entityConfigurations, container);
 	}
+
 	public getDefaultSerializationAttributeNames(): EntitySelections<UserSchemaType>{
 		const ss = super.getDefaultSerializationAttributeNames(); 
 		return (ss as Array<string>).filter((s) => s !== 'password');
@@ -55,7 +50,7 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 			await this.authModuleClient.createUserAuth({
 				username: payload.email,
 				password: payload.password,
-				groups: [ payload.group ]
+				groups: payload.groups
 			});
 
 			this.logger.info("Successfully created user auth records for: ", created.data);
@@ -73,10 +68,10 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 
 		const user = await super.get({identifiers});
 
-		if(data.group){
+		if(data.groups){
 			await this.authModuleClient.setUserGroups({
 				username: user!.email,
-				groups: [ data.group ]
+				groups: data.groups
 			});
 		}
 
