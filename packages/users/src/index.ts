@@ -1,6 +1,6 @@
 import { AbstractFw24Module, FW24Construct, createLogger, ILogger, DIModule } from '@ten24group/fw24';
 import { NEW_USER_GROUPS_KEY, TABLE_NAME_KEY, ADMIN_USER_GROUPS_KEY } from './const';
-import { createUserSchema } from './entities/user';
+import { createUserSchema, UserSchemaType } from './entities/user';
 import { IUsersModuleConfig } from './interfaces';
 import { UserService } from './services/user';
 
@@ -43,4 +43,10 @@ export class UsersModule extends AbstractFw24Module {
         envVars.set(ADMIN_USER_GROUPS_KEY, Array.isArray(this.config.adminUserGroups) ? this.config.adminUserGroups.join(',') : this.config.adminUserGroups);
         return envVars;
     }
+}
+
+export {
+    UserService, 
+    UserSchemaType,
+    createUserSchema,
 }
