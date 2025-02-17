@@ -19,56 +19,58 @@ import { type IAuthModuleClient } from '@ten24group/fw24-auth-cognito';
 export class UserService extends BaseEntityService<UserSchemaType> {
 
 	constructor(
-		@InjectEntitySchema('user') 
+		@InjectEntitySchema('user')
 		readonly schema: UserSchemaType,
-		
-		@Inject(DI_TOKENS.DYNAMO_ENTITY_CONFIGURATIONS) 
+
+		@Inject(DI_TOKENS.DYNAMO_ENTITY_CONFIGURATIONS)
 		readonly entityConfigurations: EntityConfiguration,
-		
-		@Inject(AuthModuleClientDIToken, { isOptional: true }) 
+
+		@Inject(AuthModuleClientDIToken, { isOptional: true })
 		private readonly authModuleClient: IAuthModuleClient,
-		
-		@InjectContainer() 
+
+		@InjectContainer()
 		private readonly container: DIContainer,
-	){
+	) {
 		super(schema, entityConfigurations, container);
 	}
 
-	public getDefaultSerializationAttributeNames(): EntitySelections<UserSchemaType>{
-		const ss = super.getDefaultSerializationAttributeNames(); 
+	public getDefaultSerializationAttributeNames(): EntitySelections<UserSchemaType> {
+		const ss = super.getDefaultSerializationAttributeNames();
 		return (ss as Array<string>).filter((s) => s !== 'password');
 	}
 
-	public async create( payload: CreateEntityItemTypeFromSchema<UserSchemaType> ) {
+	public async create(payload: CreateEntityItemTypeFromSchema<UserSchemaType>) {
 		const created = await super.create(payload);
 
 		// create user's auth records
-		if(created.data && this.authModuleClient){
+		if (created.data && this.authModuleClient) {
 
 			this.logger.info("Creating user auth records for: ", created.data);
 
 			await this.authModuleClient.createUserAuth({
 				username: payload.email,
 				password: payload.password,
-				groups: payload.groups
+				groups: payload.groups,
+				autoVerifyEmail: true,
+				autoTriggerForgotPassword: true,
 			});
 
 			this.logger.info("Successfully created user auth records for: ", created.data);
 		}
-		
+
 		return created;
-    }
+	}
 
 	public async update(
-		identifiers: EntityIdentifiersTypeFromSchema<UserSchemaType>, 
+		identifiers: EntityIdentifiersTypeFromSchema<UserSchemaType>,
 		data: UpdateEntityItemTypeFromSchema<UserSchemaType>
 	): Promise<any> {
-		
+
 		const updated = await super.update(identifiers, data);
 
-		const user = await super.get({identifiers});
+		const user = await super.get({ identifiers });
 
-		if(data.groups){
+		if (data.groups) {
 			await this.authModuleClient.setUserGroups({
 				username: user!.email,
 				groups: data.groups
@@ -76,5 +78,5 @@ export class UserService extends BaseEntityService<UserSchemaType> {
 		}
 
 		return updated;
-    }
+	}
 }
