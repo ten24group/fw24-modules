@@ -8,14 +8,14 @@ export type SignInResult = AuthenticationResultType | {
 }
 
 export type CreateUserOptions = {
-    username: string, 
-    tempPassword: string, 
-    attributes?: Array<{Name: string, Value: string}>
+    username: string,
+    tempPassword: string,
+    attributes?: Array<{ Name: string, Value: string }>
 }
 
 export type UpdateUserAttributeOptions = {
-    username: string, 
-    attributes: Array<{Name: string, Value: string}>
+    username: string,
+    attributes: Array<{ Name: string, Value: string }>
 }
 
 export interface IAuthService {
@@ -39,30 +39,33 @@ export interface IAuthService {
     removeUserFromGroup(username: string, groupName: string): Promise<void>;
 }
 
-export type CreateUserAuthenticationOptions = { 
-    username: string, 
-    password: string, 
+export type CreateUserAuthenticationOptions = {
+    username: string,
+    password: string,
     groups?: string[],
+    autoLogin?: boolean;
+    autoVerifyEmail?: boolean;
+    autoTriggerForgotPassword?: boolean;
 }
 
 export type AddUserToGroupOptions = {
     group: string,
-    username: string, 
+    username: string,
 }
 
 export type RemoveUserFromGroupOptions = {
     group: string,
-    username: string, 
+    username: string,
 }
 
 export type SetUserGroupsOptions = {
     groups?: string[],
-    username: string, 
+    username: string,
 }
 
 export type SetUserPasswordOptions = {
-    username: string, 
-    password: string, 
+    username: string,
+    password: string,
     forceChangePassword?: boolean
 }
 
@@ -71,11 +74,11 @@ export type ResetUserPasswordOptions = {
 }
 
 export interface IAuthModuleClient {
-    createUserAuth(options: CreateUserAuthenticationOptions): Promise<void>;
+    createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
 
-    addUserToGroup( options: AddUserToGroupOptions): Promise<void>;
-    
-    setUserGroups( options: SetUserGroupsOptions): Promise<void>;
+    addUserToGroup(options: AddUserToGroupOptions): Promise<void>;
+
+    setUserGroups(options: SetUserGroupsOptions): Promise<void>;
 
     setUserPassword(options: SetUserPasswordOptions): Promise<void>;
     resetUserPassword(options: ResetUserPasswordOptions): Promise<void>;
