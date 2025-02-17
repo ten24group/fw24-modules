@@ -5,7 +5,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { resolveEnvValueFor } from "@ten24group/fw24";
 
 export class CognitoService implements IAuthService {
-    
+
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
 
@@ -43,7 +43,7 @@ export class CognitoService implements IAuthService {
             })
         );
 
-        if(result.ChallengeName){
+        if (result.ChallengeName) {
             return {
                 challengeName: result.ChallengeName,
                 challengeParameters: result.ChallengeParameters,
@@ -85,20 +85,20 @@ export class CognitoService implements IAuthService {
 
     async createUser(options: CreateUserOptions) {
         const { username, tempPassword, attributes = [] } = options;
-        
+
         await this.identityProviderClient.send(
             new AdminCreateUserCommand({
                 Username: username,
                 UserPoolId: this.getUserPoolID(),
                 TemporaryPassword: tempPassword,
-                DesiredDeliveryMediums: [DeliveryMediumType.EMAIL],
+                DesiredDeliveryMediums: [ DeliveryMediumType.EMAIL ],
                 MessageAction: "SUPPRESS",
                 UserAttributes: attributes,
             })
         );
     }
 
-    async setPassword(username: string, password: string, forceChangePassword=true ){
+    async setPassword(username: string, password: string, forceChangePassword = true) {
         await this.identityProviderClient.send(
             new AdminSetUserPasswordCommand({
                 Username: username,
@@ -109,7 +109,7 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async resetPassword(username: string){
+    async resetPassword(username: string) {
         await this.identityProviderClient.send(
             new AdminResetUserPasswordCommand({
                 Username: username,
@@ -160,7 +160,7 @@ export class CognitoService implements IAuthService {
     }
 
     async getUserGroupNames(username: string): Promise<Array<string>> {
-        
+
         //! NOTE: if there are a lot of groups this function will only return first 20
         const groupsList = await this.identityProviderClient.send(
             new AdminListGroupsForUserCommand({
@@ -170,7 +170,7 @@ export class CognitoService implements IAuthService {
             })
         );
 
-        return groupsList.Groups?.map( g => g.GroupName ?? '' ) ?? [];
+        return groupsList.Groups?.map(g => g.GroupName ?? '') ?? [];
     }
 
     async setUserGroups(username: string, newGroups: string[]): Promise<void> {
@@ -179,15 +179,15 @@ export class CognitoService implements IAuthService {
         const promises = [];
 
         // collect only the new groups to be added
-        for(const group of newGroups){
-            if(!existingUserGroups.includes(group)){
+        for (const group of newGroups) {
+            if (!existingUserGroups.includes(group)) {
                 promises.push(this.addUserToGroup(username, group))
             }
         }
 
         // collect any existing-groups which are not part of new-groups for removal
-        for(const group of existingUserGroups){
-            if(!newGroups.includes(group)){
+        for (const group of existingUserGroups) {
+            if (!newGroups.includes(group)) {
                 promises.push(this.removeUserFromGroup(username, group))
             }
         }
@@ -195,7 +195,7 @@ export class CognitoService implements IAuthService {
         await Promise.all(promises);
     }
 
-    async updateUserAttributes( options: UpdateUserAttributeOptions): Promise<void> {
+    async updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void> {
         const { username, attributes } = options;
 
         await this.identityProviderClient.send(
@@ -226,7 +226,7 @@ export class CognitoService implements IAuthService {
         const identityInput = {
             IdentityPoolId: this.getIdentityPoolId(),
             Logins: {
-                [providerName]: idToken,
+                [ providerName ]: idToken,
             },
         };
 
@@ -237,7 +237,7 @@ export class CognitoService implements IAuthService {
         const credentialInput = {
             IdentityId: identityID,
             Logins: {
-                [providerName]: idToken,
+                [ providerName ]: idToken,
             },
         };
 
@@ -247,14 +247,14 @@ export class CognitoService implements IAuthService {
 
     // Utility functions
     private getIdentityPoolId() {
-        return resolveEnvValueFor({key: 'identityPoolID'}) || '';
+        return resolveEnvValueFor({ key: 'identityPoolID' }) || '';
     }
 
     private getUserPoolClientId() {
-        return resolveEnvValueFor({key: 'userPoolClientID'}) || '';
+        return resolveEnvValueFor({ key: 'userPoolClientID' }) || '';
     }
 
     private getUserPoolID() {
-        return resolveEnvValueFor({key: 'userPoolID'}) || '';
+        return resolveEnvValueFor({ key: 'userPoolID' }) || '';
     }
 }

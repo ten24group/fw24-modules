@@ -1,35 +1,35 @@
 import { AuthModule } from './../index';
-import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject  } from '@ten24group/fw24';
+import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject } from '@ten24group/fw24';
 
 import { IAuthService } from '../interfaces';
 import { AuthServiceDIToken } from '../const';
 
 type EmailAndPassword = {
-	email: string, 
-	password: string,
+    email: string,
+    password: string,
 }
 
 const emailAndPasswordValidations: InputValidationRule<EmailAndPassword> = {
-	email: {
-		required: true,
-		datatype: 'email',
-	}, 
-	password: {
-		required: true,
-		/*
-			minLength: 8,
-			maxLength: 20,
-			pattern: {
-				validator: (inputVal: any) => Promise.resolve(customPasswordValidator(inputVal)),
-			}
-		*/
-	}
+    email: {
+        required: true,
+        datatype: 'email',
+    },
+    password: {
+        required: true,
+        /*
+            minLength: 8,
+            maxLength: 20,
+            pattern: {
+                validator: (inputVal: any) => Promise.resolve(customPasswordValidator(inputVal)),
+            }
+        */
+    }
 } as const;
 
 @Controller('mauth', {
-    authorizer: [{
+    authorizer: [ {
         name: 'authmodule', type: 'NONE'
-    }],
+    } ],
     env: [
         { name: 'userPoolClientID', prefix: 'authmodule' },
         { name: 'userPoolID', prefix: 'authmodule' },
@@ -41,15 +41,15 @@ const emailAndPasswordValidations: InputValidationRule<EmailAndPassword> = {
 })
 export class AuthController extends APIController {
 
-	constructor(
-		@Inject(AuthServiceDIToken) private readonly authService: IAuthService
-	) {
-		super();
+    constructor(
+        @Inject(AuthServiceDIToken) private readonly authService: IAuthService
+    ) {
+        super();
     }
-	
-	async initialize() {
-		return Promise.resolve();
-	}
+
+    async initialize() {
+        return Promise.resolve();
+    }
 
     @Post('/signup', { validations: emailAndPasswordValidations })
     async signup(req: Request, res: Response) {
@@ -62,6 +62,15 @@ export class AuthController extends APIController {
         });
     }
 
+    @Post('/signup-and-signin', { validations: emailAndPasswordValidations })
+    async signupAndSignin(req: Request, res: Response) {
+        const { email, password } = req.body as EmailAndPassword;
+
+        await this.authService.signup(email, password);
+
+        return await this.signin(req, res);
+    }
+
     @Post('/signin', { validations: emailAndPasswordValidations })
     async signin(req: Request, res: Response) {
         const { email, password } = req.body as EmailAndPassword;
@@ -69,19 +78,18 @@ export class AuthController extends APIController {
         const result = await this.authService.signin(email, password);
 
         // if the login attempt returned a challenge let the client know
-        if('challengeName' in result){
-            return res.json( result );
+        if ('challengeName' in result) {
+            return res.json(result);
         }
 
-        const idToken = result?.IdToken;
-        if (idToken === undefined) {
-            
+        if (!result?.IdToken) {
+
             let response: any = {
                 message: 'Authentication failed'
             };
-            
-            if(req.debugMode){
-                response = {...response, result}
+
+            if (req.debugMode) {
+                response = { ...response, result }
             }
 
             return res.status(401).json(response);
