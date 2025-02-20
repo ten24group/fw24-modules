@@ -1,6 +1,7 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
 import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult } from "./interfaces";
+import { UserType } from "@aws-sdk/client-cognito-identity-provider";
 
 export class SharedAuthClient implements IAuthModuleClient {
 
@@ -10,17 +11,27 @@ export class SharedAuthClient implements IAuthModuleClient {
         @Inject(AuthServiceDIToken) private readonly authService: IAuthService
     ) { }
 
+    async getUserByUserSub(userSub: string): Promise<UserType | undefined> {
+        return this.authService.getUserByUserSub(userSub)
+    }
+
     async createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult> {
 
-        const { username, password, groups = [], autoLogin, autoTriggerForgotPassword, autoVerifyEmail } = options;
+        const { username, password, groups = [], userAttributes = [], autoLogin, autoTriggerForgotPassword, autoVerifyEmail } = options;
+
+        const emailAttributeExists = userAttributes.find(att => att.Name === 'email');
+
+        if (!emailAttributeExists) {
+            userAttributes.push({
+                Name: 'email',
+                Value: username,
+            })
+        }
 
         await this.authService.createUser({
             username,
             tempPassword: password,
-            attributes: [ {
-                Name: 'email',
-                Value: username,
-            } ]
+            attributes: userAttributes
         });
 
         // verify the user so they can proceed with login

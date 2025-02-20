@@ -1,4 +1,4 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, ListUsersCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import { CreateUserOptions, IAuthService, SignInResult, UpdateUserAttributeOptions } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
@@ -8,6 +8,22 @@ export class CognitoService implements IAuthService {
 
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
+
+
+    // Event object is the event passed to Lambda
+    async getUserByUserSub(userSub: string) {
+
+        let result = await this.identityProviderClient.send(new ListUsersCommand({
+            UserPoolId: this.getUserPoolID(),
+            Filter: `sub = "${userSub}"`,
+            Limit: 1
+        }));
+
+        const user = result.Users?.length ? result.Users[ 0 ] : undefined;
+
+        return user;
+    }
+
 
     async signup(username: string, password: string): Promise<void> {
         const userPoolClientId = this.getUserPoolClientId();

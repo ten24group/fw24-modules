@@ -1,4 +1,4 @@
-import type { AuthenticationResultType, ChallengeNameType } from "@aws-sdk/client-cognito-identity-provider";
+import type { AuthenticationResultType, ChallengeNameType, UserType } from "@aws-sdk/client-cognito-identity-provider";
 import type { IAuthConstructConfig } from "@ten24group/fw24";
 
 
@@ -28,6 +28,8 @@ export interface IAuthService {
     forgotPassword(username: string): Promise<void>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
 
+    getUserByUserSub(userSub: string): Promise<UserType | undefined>;
+
     // Admin methods
     createUser(options: CreateUserOptions): Promise<void>;
     setPassword(username: string, password: string, forceChangePassword?: boolean): Promise<void>
@@ -43,6 +45,10 @@ export type CreateUserAuthenticationOptions = {
     username: string,
     password: string,
     groups?: string[],
+    userAttributes?: Array<{
+        Name: string,
+        Value: string,
+    }>;
     autoLogin?: boolean;
     autoVerifyEmail?: boolean;
     autoTriggerForgotPassword?: boolean;
@@ -75,6 +81,8 @@ export type ResetUserPasswordOptions = {
 
 export interface IAuthModuleClient {
     createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
+
+    getUserByUserSub(UserSub: string): Promise<UserType | undefined>;
 
     addUserToGroup(options: AddUserToGroupOptions): Promise<void>;
 
