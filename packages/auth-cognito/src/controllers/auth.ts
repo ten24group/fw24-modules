@@ -53,22 +53,17 @@ export class AuthController extends APIController {
 
     @Post('/signup', { validations: emailAndPasswordValidations })
     async signup(req: Request, res: Response) {
-        const { email, password } = req.body as EmailAndPassword;
+        const { email, password, autoSignIn = false } = req.body as EmailAndPassword & { autoSignIn?: boolean };
 
         await this.authService.signup(email, password);
+
+        if (autoSignIn) {
+            return await this.signin(req, res);
+        }
 
         return res.json({
             message: 'User Signed Up'
         });
-    }
-
-    @Post('/signup-and-signin', { validations: emailAndPasswordValidations })
-    async signupAndSignin(req: Request, res: Response) {
-        const { email, password } = req.body as EmailAndPassword;
-
-        await this.authService.signup(email, password);
-
-        return await this.signin(req, res);
     }
 
     @Post('/signin', { validations: emailAndPasswordValidations })
