@@ -31,9 +31,9 @@ const emailAndPasswordValidations: InputValidationRule<EmailAndPassword> = {
         name: 'authmodule', type: 'NONE'
     }],
     env: [
-        { name: 'userPoolClientID', prefix: 'authmodule' },
-        { name: 'userPoolID', prefix: 'authmodule' },
-        { name: 'identityPoolID', prefix: 'authmodule' }
+        { name: 'userPoolID', prefix: 'userpool_authmodule' },
+        { name: 'userPoolClientID', prefix: 'userpoolclient_authmodule' },
+        { name: 'identityPoolID', prefix: 'identitypool_authmodule' }
     ],
     module: {
         providedBy: AuthModule
