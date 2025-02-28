@@ -1,4 +1,4 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import { CreateUserOptions, IAuthService, SignInResult, UpdateUserAttributeOptions } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
@@ -71,6 +71,66 @@ export class CognitoService implements IAuthService {
                 ConfirmationCode: code,
             })
         );
+    }
+
+    async getLoginOptions(username: string): Promise<ChallengeNameType[]|undefined> {
+        const result = await this.identityProviderClient.send(
+            new InitiateAuthCommand({
+                AuthFlow: 'USER_AUTH',
+                ClientId: this.getUserPoolClientId(),
+                AuthParameters: {
+                    USERNAME: username
+                }
+            })
+        );
+
+        return result.AvailableChallenges;
+    }
+
+    async initiateOtpAuth(username: string): Promise<{ session: string }> {
+        const result = await this.identityProviderClient.send(
+            new InitiateAuthCommand({
+                AuthFlow: 'CUSTOM_AUTH',
+                ClientId: this.getUserPoolClientId(),
+                AuthParameters: {
+                    USERNAME: username,
+                    CHALLENGE_NAME: 'CUSTOM_CHALLENGE'
+                }
+            })
+        );
+
+        if (!result.Session) {
+            throw new Error('Failed to initiate OTP authentication');
+        }
+
+        return { session: result.Session };
+    }
+
+    async respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult> {
+        const result = await this.identityProviderClient.send(
+            new RespondToAuthChallengeCommand({
+                ClientId: this.getUserPoolClientId(),
+                ChallengeName: 'CUSTOM_CHALLENGE',
+                Session: session,
+                ChallengeResponses: {
+                    USERNAME: username,
+                    ANSWER: code
+                }
+            })
+        );
+
+        if (result.ChallengeName) {
+            return {
+                challengeName: result.ChallengeName,
+                challengeParameters: result.ChallengeParameters
+            };
+        }
+
+        if (!result.AuthenticationResult) {
+            throw new Error('Authentication failed');
+        }
+
+        return result.AuthenticationResult;
     }
 
     async changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void> {

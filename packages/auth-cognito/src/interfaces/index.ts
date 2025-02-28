@@ -27,6 +27,9 @@ export interface IAuthService {
     changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void>;
     forgotPassword(username: string): Promise<void>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
+    getLoginOptions(username: string): Promise<ChallengeNameType[]|undefined>;
+    initiateOtpAuth(username: string): Promise<{ session: string }>;
+    respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult>;
 
     // Admin methods
     createUser(options: CreateUserOptions): Promise<void>;

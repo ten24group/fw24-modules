@@ -187,4 +187,45 @@ export class AuthController extends APIController {
 
         return res.json(credentials);
     }
+
+    @Post('/getLoginOptions', {
+        validations: {
+            username: { required: true }
+        }
+    })
+    async getLoginOptions(req: Request, res: Response) {
+        const { username } = req.body as { username: string };
+
+        const loginOptions = await this.authService.getLoginOptions(username);
+
+        return res.json(loginOptions);
+    }
+
+    @Post('/initiateOtpAuth', {
+        validations: {
+            username: { required: true }
+        }
+    })
+    async initiateOtpAuth(req: Request, res: Response) {
+        const { username } = req.body as { username: string };
+
+        const result = await this.authService.initiateOtpAuth(username);
+
+        return res.json(result);
+    }
+
+    @Post('/respondToOtpChallenge', {
+        validations: {
+            username: { required: true },
+            session: { required: true },
+            code: { required: true }
+        }
+    })
+    async respondToOtpChallenge(req: Request, res: Response) {
+        const { username, session, code } = req.body as { username: string; session: string; code: string };
+
+        const result = await this.authService.respondToOtpChallenge(username, session, code);
+
+        return res.json(result);
+    }
 }

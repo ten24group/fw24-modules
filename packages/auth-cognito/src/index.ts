@@ -52,11 +52,47 @@ export class AuthModule extends AbstractFw24Module {
         }
         this.logger.debug("AuthModule: ", config);
 
-        const allTriggers = [...(config.triggers ?? [])];
+        // Define default OTP triggers
+        const otpTriggers = [
+            {
+                trigger: 'DEFINE_AUTH_CHALLENGE' as const,
+                functionProps: {
+                    entry: join(__dirname, 'functions/define-auth-challenge.js'),
+                    policies: []
+                }
+            },
+            {
+                trigger: 'CREATE_AUTH_CHALLENGE' as const,
+                functionProps: {
+                    entry: join(__dirname, 'functions/create-auth-challenge.js'),
+                    policies: [
+                        {
+                            actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+                            resources: ['*']
+                        }
+                    ]
+                }
+            },
+            {
+                trigger: 'VERIFY_AUTH_CHALLENGE_RESPONSE' as const,
+                functionProps: {
+                    entry: join(__dirname, 'functions/verify-auth-challenge.js'),
+                    policies: []
+                }
+            }
+        ];
+
+        // Combine all triggers
+        const allTriggers = [
+            ...(config.triggers ?? []),
+            ...otpTriggers
+        ];
+
         if(config.customMessageTemplates){
-            allTriggers.push(
-                this.makeCustomMessageHandlerTrigger(config.customMessageTemplates)!
-            );
+            const customMessageTrigger = this.makeCustomMessageHandlerTrigger(config.customMessageTemplates);
+            if (customMessageTrigger) {
+                allTriggers.push(customMessageTrigger);
+            }
         }
         
         const cognito = new AuthConstruct({	
@@ -65,7 +101,6 @@ export class AuthModule extends AbstractFw24Module {
         });
 
         this.constructs.set('auth-cognito', cognito );
-
     }
 
     makeCustomMessageHandlerTrigger( customMessageTemplates: IAuthModuleConfig['customMessageTemplates']): ArrayElement<IAuthModuleConfig['triggers']> | undefined {
