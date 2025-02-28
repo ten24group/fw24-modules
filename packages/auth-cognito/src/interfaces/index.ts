@@ -1,4 +1,4 @@
-import type { AuthenticationResultType, ChallengeNameType } from "@aws-sdk/client-cognito-identity-provider";
+import type { AuthenticationResultType, ChallengeNameType, UserType } from "@aws-sdk/client-cognito-identity-provider";
 import type { IAuthConstructConfig } from "@ten24group/fw24";
 
 
@@ -8,14 +8,14 @@ export type SignInResult = AuthenticationResultType | {
 }
 
 export type CreateUserOptions = {
-    username: string, 
-    tempPassword: string, 
-    attributes?: Array<{Name: string, Value: string}>
+    username: string,
+    tempPassword: string,
+    attributes?: Array<{ Name: string, Value: string }>
 }
 
 export type UpdateUserAttributeOptions = {
-    username: string, 
-    attributes: Array<{Name: string, Value: string}>
+    username: string,
+    attributes: Array<{ Name: string, Value: string }>
 }
 
 export interface IAuthService {
@@ -28,6 +28,8 @@ export interface IAuthService {
     forgotPassword(username: string): Promise<void>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
 
+    getUserByUserSub(userSub: string): Promise<UserType | undefined>;
+
     // Admin methods
     createUser(options: CreateUserOptions): Promise<void>;
     setPassword(username: string, password: string, forceChangePassword?: boolean): Promise<void>
@@ -39,30 +41,37 @@ export interface IAuthService {
     removeUserFromGroup(username: string, groupName: string): Promise<void>;
 }
 
-export type CreateUserAuthenticationOptions = { 
-    username: string, 
-    password: string, 
+export type CreateUserAuthenticationOptions = {
+    username: string,
+    password: string,
     groups?: string[],
+    userAttributes?: Array<{
+        Name: string,
+        Value: string,
+    }>;
+    autoLogin?: boolean;
+    autoVerifyEmail?: boolean;
+    autoTriggerForgotPassword?: boolean;
 }
 
 export type AddUserToGroupOptions = {
     group: string,
-    username: string, 
+    username: string,
 }
 
 export type RemoveUserFromGroupOptions = {
     group: string,
-    username: string, 
+    username: string,
 }
 
 export type SetUserGroupsOptions = {
     groups?: string[],
-    username: string, 
+    username: string,
 }
 
 export type SetUserPasswordOptions = {
-    username: string, 
-    password: string, 
+    username: string,
+    password: string,
     forceChangePassword?: boolean
 }
 
@@ -71,11 +80,13 @@ export type ResetUserPasswordOptions = {
 }
 
 export interface IAuthModuleClient {
-    createUserAuth(options: CreateUserAuthenticationOptions): Promise<void>;
+    createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
 
-    addUserToGroup( options: AddUserToGroupOptions): Promise<void>;
-    
-    setUserGroups( options: SetUserGroupsOptions): Promise<void>;
+    getUserByUserSub(UserSub: string): Promise<UserType | undefined>;
+
+    addUserToGroup(options: AddUserToGroupOptions): Promise<void>;
+
+    setUserGroups(options: SetUserGroupsOptions): Promise<void>;
 
     setUserPassword(options: SetUserPasswordOptions): Promise<void>;
     resetUserPassword(options: ResetUserPasswordOptions): Promise<void>;

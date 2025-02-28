@@ -27,16 +27,16 @@
   },
   "homepage": "https://github.com/ten24group/fw24-modules#readme",
   "devDependencies": {
-    "@ten24group/fw24": "^0.1.1-beta.1",
+    "@ten24group/fw24": "^0.1.1-beta.9",
     "@ten24group/fw24-auth-cognito": "file:../auth-cognito",
     "@types/node": "^20.12.7",
     "standard-version": "^9.5.0",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "electrodb": "^2.14.3"
+    "electrodb": "^3.0.1"
   },
   "peerDependencies": {
-    "@ten24group/fw24": "^0.1.1-beta.1"
+    "@ten24group/fw24": "^0.1.1-beta.9"
   }
 }
