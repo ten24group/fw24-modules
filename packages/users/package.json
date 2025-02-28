@@ -34,7 +34,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "electrodb": "^2.14.3"
+    "electrodb": "^3.0.1"
   },
   "peerDependencies": {
     "@ten24group/fw24": "^0.1.1-beta.9"
