@@ -52,40 +52,21 @@ export class AuthModule extends AbstractFw24Module {
         }
         this.logger.debug("AuthModule: ", config);
 
-        // Define default OTP triggers
-        const otpTriggers = [
-            {
-                trigger: 'DEFINE_AUTH_CHALLENGE' as const,
+        // if autoVerifyUser is true, make sure user is automatically verified
+        if(config.autoVerifyUser){
+            const preSignupTrigger = {
+                trigger: 'PRE_SIGN_UP' as const,
                 functionProps: {
-                    entry: join(__dirname, 'functions/define-auth-challenge.js'),
-                    policies: []
-                }
-            },
-            {
-                trigger: 'CREATE_AUTH_CHALLENGE' as const,
-                functionProps: {
-                    entry: join(__dirname, 'functions/create-auth-challenge.js'),
-                    policies: [
-                        {
-                            actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-                            resources: ['*']
-                        }
-                    ]
-                }
-            },
-            {
-                trigger: 'VERIFY_AUTH_CHALLENGE_RESPONSE' as const,
-                functionProps: {
-                    entry: join(__dirname, 'functions/verify-auth-challenge.js'),
+                    entry: join(__dirname, 'functions/pre-signup-autoverify.js'),
                     policies: []
                 }
             }
-        ];
+            config.triggers?.push(preSignupTrigger);
+        }
 
         // Combine all triggers
         const allTriggers = [
             ...(config.triggers ?? []),
-            ...otpTriggers
         ];
 
         if(config.customMessageTemplates){
@@ -94,6 +75,8 @@ export class AuthModule extends AbstractFw24Module {
                 allTriggers.push(customMessageTrigger);
             }
         }
+
+        this.logger.debug("All Triggers: ", allTriggers);
         
         const cognito = new AuthConstruct({	
             ...config,

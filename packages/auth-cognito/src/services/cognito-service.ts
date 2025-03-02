@@ -1,6 +1,6 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, SignInResult, UpdateUserAttributeOptions } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { resolveEnvValueFor } from "@ten24group/fw24";
 
@@ -9,15 +9,27 @@ export class CognitoService implements IAuthService {
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
 
-    async signup(username: string, password: string): Promise<void> {
+    async signup(options: SignUpOptions): Promise<void> {
+        const { username, password, email, attributes = [] } = options;
         const userPoolClientId = this.getUserPoolClientId();
 
-        const userAttributes = [
-            {
+        // Build user attributes array
+        const userAttributes = [...attributes];
+        
+        // If email is provided, always add it as an attribute
+        if (email) {
+            userAttributes.push({
+                Name: 'email',
+                Value: email,
+            });
+        }
+        // If no email provided but username looks like an email, use it as email
+        else if (this.isValidEmail(username)) {
+            userAttributes.push({
                 Name: 'email',
                 Value: username,
-            },
-        ];
+            });
+        }
 
         await this.identityProviderClient.send(
             new SignUpCommand({
@@ -27,6 +39,12 @@ export class CognitoService implements IAuthService {
                 UserAttributes: userAttributes,
             })
         );
+    }
+
+    // Helper method to validate email format
+    private isValidEmail(email: string): boolean {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
     }
 
     async signin(username: string, password: string): Promise<SignInResult> {
@@ -45,9 +63,14 @@ export class CognitoService implements IAuthService {
 
         if(result.ChallengeName){
             return {
+                session: result.Session ?? '',
                 challengeName: result.ChallengeName,
                 challengeParameters: result.ChallengeParameters,
             }
+        }
+
+        if (!result.AuthenticationResult) {
+            throw new Error('Authentication failed');
         }
 
         return result.AuthenticationResult!;
@@ -73,7 +96,37 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async getLoginOptions(username: string): Promise<ChallengeNameType[]|undefined> {
+    async getUserAttributeVerificationCode(accessToken: string, attributeName: string): Promise<void> {
+        await this.identityProviderClient.send(
+            new GetUserAttributeVerificationCodeCommand({
+                AccessToken: accessToken,
+                AttributeName: attributeName,
+            })
+        );
+    }
+
+    async verifyUserAttribute(accessToken: string, attributeName: string, code: string): Promise<void> {
+        await this.identityProviderClient.send(
+            new VerifyUserAttributeCommand({
+                AccessToken: accessToken,
+                AttributeName: attributeName,
+                Code: code,
+            })
+        );
+    }
+
+    async resendVerificationCode(username: string): Promise<void> {
+        const userPoolClientId = this.getUserPoolClientId();
+
+        await this.identityProviderClient.send(
+            new ResendConfirmationCodeCommand({
+                ClientId: userPoolClientId,
+                Username: username,
+            })
+        );
+    }
+
+    async getLoginOptions(username: string): Promise<InitiateAuthResult> {
         const result = await this.identityProviderClient.send(
             new InitiateAuthCommand({
                 AuthFlow: 'USER_AUTH',
@@ -84,45 +137,51 @@ export class CognitoService implements IAuthService {
             })
         );
 
-        return result.AvailableChallenges;
+        return { challenges: result.AvailableChallenges ?? [], session: result.Session ?? '' };
     }
 
-    async initiateOtpAuth(username: string): Promise<{ session: string }> {
-        const result = await this.identityProviderClient.send(
-            new InitiateAuthCommand({
-                AuthFlow: 'CUSTOM_AUTH',
+    async initiateOtpAuth(username: string, session: string): Promise<SignInResult> {
+        const response = await this.identityProviderClient.send(
+            new RespondToAuthChallengeCommand({
                 ClientId: this.getUserPoolClientId(),
-                AuthParameters: {
+                ChallengeName: 'SELECT_CHALLENGE',
+                Session: session,
+                ChallengeResponses: {
                     USERNAME: username,
-                    CHALLENGE_NAME: 'CUSTOM_CHALLENGE'
+                    ANSWER: 'EMAIL_OTP'
                 }
             })
         );
 
-        if (!result.Session) {
+        if (!response.Session || !response.ChallengeName) {
             throw new Error('Failed to initiate OTP authentication');
         }
 
-        return { session: result.Session };
+        return {
+            session: response.Session,
+            challengeName: response.ChallengeName,
+            challengeParameters: response.ChallengeParameters,
+        }
     }
 
-    async respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult> {
+    async respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult> {        
         const result = await this.identityProviderClient.send(
             new RespondToAuthChallengeCommand({
                 ClientId: this.getUserPoolClientId(),
-                ChallengeName: 'CUSTOM_CHALLENGE',
+                ChallengeName: 'EMAIL_OTP',
                 Session: session,
                 ChallengeResponses: {
                     USERNAME: username,
-                    ANSWER: code
+                    EMAIL_OTP_CODE: code
                 }
             })
         );
 
         if (result.ChallengeName) {
             return {
+                session: result.Session ?? '',
                 challengeName: result.ChallengeName,
-                challengeParameters: result.ChallengeParameters
+                challengeParameters: result.ChallengeParameters,
             };
         }
 
@@ -131,6 +190,28 @@ export class CognitoService implements IAuthService {
         }
 
         return result.AuthenticationResult;
+    }
+
+    async refreshToken(refreshToken: string): Promise<SignInResult> {
+        const result = await this.identityProviderClient.send(
+            new InitiateAuthCommand({
+                AuthFlow: 'REFRESH_TOKEN_AUTH',
+                ClientId: this.getUserPoolClientId(),
+                AuthParameters: {
+                    REFRESH_TOKEN: refreshToken
+                }
+            })
+        );
+
+        if (!result.AuthenticationResult) {
+            throw new Error('Token refresh failed');
+        }
+
+        return {
+            ...result.AuthenticationResult,
+            // Keep the original refresh token since Cognito doesn't return a new one
+            RefreshToken: refreshToken
+        };
     }
 
     async changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void> {
@@ -266,6 +347,51 @@ export class CognitoService implements IAuthService {
             })
         );
 
+    }
+
+    async updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void> {
+        const { enabledMethods, preferredMethod } = mfaPreference;
+        
+        await this.identityProviderClient.send(
+            new SetUserMFAPreferenceCommand({
+                AccessToken: accessToken,
+                EmailMfaSettings: {
+                    Enabled: enabledMethods.includes('EMAIL'),
+                    PreferredMfa: preferredMethod === 'EMAIL',
+                },
+                SMSMfaSettings: {
+                    Enabled: enabledMethods.includes('SMS'),
+                    PreferredMfa: preferredMethod === 'SMS',
+                },
+                SoftwareTokenMfaSettings: {
+                    Enabled: enabledMethods.includes('SOFTWARE_TOKEN'),
+                    PreferredMfa: preferredMethod === 'SOFTWARE_TOKEN',
+                },
+            })
+        );  
+    }
+
+    async setUserMfaSettings(settings: AdminMfaSettings): Promise<void> {
+        const { username, enabledMethods, preferredMethod } = settings;
+        
+        await this.identityProviderClient.send(
+            new AdminSetUserMFAPreferenceCommand({
+                Username: username,
+                UserPoolId: this.getUserPoolID(),
+                EmailMfaSettings: {
+                    Enabled: enabledMethods.includes('EMAIL'),
+                    PreferredMfa: preferredMethod === 'EMAIL',
+                },
+                SMSMfaSettings: {
+                    Enabled: enabledMethods.includes('SMS'),
+                    PreferredMfa: preferredMethod === 'SMS',
+                },
+                SoftwareTokenMfaSettings: {
+                    Enabled: enabledMethods.includes('SOFTWARE_TOKEN'),
+                    PreferredMfa: preferredMethod === 'SOFTWARE_TOKEN',
+                },
+            })
+        );
     }
 
     async getCredentials(idToken: string): Promise<any> {
