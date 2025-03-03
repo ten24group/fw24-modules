@@ -1,6 +1,6 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { resolveEnvValueFor } from "@ten24group/fw24";
 
@@ -431,6 +431,196 @@ export class CognitoService implements IAuthService {
         return await this.identityClient.send(command);
     }
 
+    async getSocialSignInConfig(redirectUri: string): Promise<SocialSignInConfigs> {
+        const userPoolClientId = this.getUserPoolClientId();
+        const domain = this.getAuthDomain();
+        
+        // Ensure we have the required configuration
+        if (!domain) {
+            throw new Error('Cognito domain is not configured');
+        }
+        if (!userPoolClientId) {
+            throw new Error('User pool client ID is not configured');
+        }
+
+        const configs: SocialSignInConfigs = {};
+
+        // Common parameters for all providers
+        const baseParams = {
+            client_id: userPoolClientId,
+            response_type: 'code',
+            scope: 'email openid profile',
+            redirect_uri: redirectUri,
+        };
+
+        // Configure Google provider if enabled
+        if (this.isProviderEnabled('Google')) {
+            const googleParams = new URLSearchParams({
+                ...baseParams,
+                identity_provider: 'Google'
+            });
+            const encodedParams = googleParams.toString().replace(/\+/g, '%20');
+            
+            configs.Google = {
+                authorizationUrl: `https://${domain}/oauth2/authorize?${encodedParams}`,
+                clientId: userPoolClientId,
+                redirectUri: redirectUri,
+                grantType: 'authorization_code'
+            };
+        }
+
+        // Configure Facebook provider if enabled
+        if (this.isProviderEnabled('Facebook')) {
+            const facebookParams = new URLSearchParams({
+                ...baseParams,
+                identity_provider: 'Facebook'
+            });
+            const encodedParams = facebookParams.toString().replace(/\+/g, '%20');
+            
+            configs.Facebook = {
+                authorizationUrl: `https://${domain}/oauth2/authorize?${encodedParams}`,
+                clientId: userPoolClientId,
+                redirectUri: redirectUri,
+                grantType: 'authorization_code'
+            };
+        }
+
+        return configs;
+    }
+
+    private isProviderEnabled(provider: SocialProvider): boolean {
+        // This is a simple check - you might want to enhance this based on your configuration
+        const supportedProviders = resolveEnvValueFor({key: 'supportedIdentityProviders'}) || '';
+        return supportedProviders.includes(provider);
+    }
+
+    async initiateSocialSignIn(provider: SocialProvider, redirectUri: string): Promise<string> {
+        const configs = await this.getSocialSignInConfig(redirectUri);
+        const providerConfig = configs[provider];
+        
+        if (!providerConfig) {
+            throw new Error(`Social provider ${provider} is not configured`);
+        }
+
+        return providerConfig.authorizationUrl;
+    }
+
+    async completeSocialSignIn(provider: SocialProvider, code: string, redirectUri: string): Promise<SocialSignInResult> {
+        const userPoolClientId = this.getUserPoolClientId();
+        const domain = this.getAuthDomain();
+
+        // Ensure we have the required configuration
+        if (!domain || !userPoolClientId) {
+            throw new Error('Missing required configuration: domain or userPoolClientId');
+        }
+
+        // Exchange the authorization code for tokens using Cognito's OAuth endpoint
+        const tokenEndpoint = `https://${domain}/oauth2/token`;
+        const params = new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: userPoolClientId,
+            code: code,
+            redirect_uri: redirectUri,
+        });
+
+        try {
+            const response = await fetch(tokenEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString(),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Token exchange failed: ${errorText}`);
+            }
+
+            const tokens = await response.json();
+
+            // Map the OAuth response to our expected format
+            const result: SocialSignInResult = {
+                AccessToken: tokens.access_token,
+                IdToken: tokens.id_token,
+                RefreshToken: tokens.refresh_token,
+                TokenType: tokens.token_type,
+                ExpiresIn: tokens.expires_in,
+                provider,
+            };
+
+            try {
+                // Get user details to check if this is a new user
+                const userResult = await this.identityProviderClient.send(
+                    new GetUserCommand({
+                        AccessToken: result.AccessToken,
+                    })
+                );
+
+                // Check if this is a new user by looking at the user attributes
+                result.isNewUser = userResult.UserAttributes?.some(attr => 
+                    attr.Name === 'custom:account_created' && 
+                    new Date(attr.Value!).getTime() === new Date().getTime()
+                ) ?? false;
+            } catch (error) {
+                // If we can't get user details, still return the tokens
+                console.error('Error getting user details:', error);
+            }
+
+            return result;
+        } catch (error: any) {
+            throw new Error(`Failed to complete social sign-in: ${error.message}`);
+        }
+    }
+
+    async linkSocialProvider(accessToken: string, provider: SocialProvider, code: string, redirectUri: string): Promise<void> {
+        const userPoolClientId = this.getUserPoolClientId();
+
+        // First, verify the user's identity with the access token
+        const userResult = await this.identityProviderClient.send(
+            new GetUserCommand({
+                AccessToken: accessToken,
+            })
+        );
+
+        // Then initiate the linking process using the admin API
+        await this.identityProviderClient.send(
+            new AdminLinkProviderForUserCommand({
+                UserPoolId: this.getUserPoolID(),
+                DestinationUser: {
+                    ProviderAttributeValue: userResult.Username!,
+                    ProviderName: 'Cognito',
+                },
+                SourceUser: {
+                    ProviderAttributeName: 'Cognito_Subject',
+                    ProviderAttributeValue: code,
+                    ProviderName: provider,
+                },
+            })
+        );
+    }
+
+    async unlinkSocialProvider(accessToken: string, provider: SocialProvider): Promise<void> {
+        // First, verify the user's identity with the access token
+        const userResult = await this.identityProviderClient.send(
+            new GetUserCommand({
+                AccessToken: accessToken,
+            })
+        );
+
+        // Then unlink the provider using the admin API
+        await this.identityProviderClient.send(
+            new AdminDisableProviderForUserCommand({
+                UserPoolId: this.getUserPoolID(),
+                User: {
+                    ProviderAttributeName: 'Cognito_Subject',
+                    ProviderName: provider,
+                    ProviderAttributeValue: userResult.Username!,
+                },
+            })
+        );
+    }
+
     // Utility functions
     private getIdentityPoolId() {
         return resolveEnvValueFor({key: 'identityPoolID'}) || '';
@@ -442,5 +632,9 @@ export class CognitoService implements IAuthService {
 
     private getUserPoolID() {
         return resolveEnvValueFor({key: 'userPoolID'}) || '';
+    }
+
+    private getAuthDomain(): string {
+        return resolveEnvValueFor({key: 'authDomain'}) || '';
     }
 }

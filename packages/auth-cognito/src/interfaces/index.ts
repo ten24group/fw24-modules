@@ -61,6 +61,12 @@ export interface IAuthService {
     respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult>;
     refreshToken(refreshToken: string): Promise<SignInResult>;
 
+    // Social sign-in methods
+    initiateSocialSignIn(provider: SocialProvider, redirectUri: string): Promise<string>;
+    completeSocialSignIn(provider: SocialProvider, code: string, redirectUri: string): Promise<SocialSignInResult>;
+    linkSocialProvider(accessToken: string, provider: SocialProvider, code: string, redirectUri: string): Promise<void>;
+    unlinkSocialProvider(accessToken: string, provider: SocialProvider): Promise<void>;
+
     // User methods
     updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void>;
 
@@ -74,6 +80,7 @@ export interface IAuthService {
     getUserGroupNames(username: string): Promise<Array<string>>;
     removeUserFromGroup(username: string, groupName: string): Promise<void>;
     setUserMfaSettings(settings: AdminMfaSettings): Promise<void>;
+    getSocialSignInConfig(redirectUri: string): Promise<SocialSignInConfigs>;
 }
 
 export type CreateUserAuthenticationOptions = { 
@@ -151,4 +158,22 @@ export interface IAuthModuleConfig extends IAuthConstructConfig {
         },
     }
     autoVerifyUser?: boolean
+}
+
+export type SocialProvider = 'Google' | 'Facebook';
+
+export type SocialSignInConfig = {
+    authorizationUrl: string;
+    clientId: string;
+    redirectUri: string;
+    grantType: string;
+}
+
+export type SocialSignInConfigs = {
+    [key in SocialProvider]?: SocialSignInConfig;
+}
+
+export type SocialSignInResult = SignInResult & {
+    isNewUser?: boolean;
+    provider?: SocialProvider;
 }

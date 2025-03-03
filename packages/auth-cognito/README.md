@@ -1,180 +1,720 @@
 # fw24-auth-cognito
 
-The `fw24-auth-cognito` is a robust authentication and authorization module designed specifically for the Framework24 (FW24) project. This module is built on top of AWS Cognito, a powerful user identity and data synchronization service that helps you securely manage and synchronize app data for your users across their mobile devices.
-
-The `fw24-auth-cognito` module provides a comprehensive set of APIs for user management, making it easier to add `sign-up`, `verification`, `sign-in`, `forgot-password`, `reset-password` enhanced security functionality to your FW24 applications. 
-
-Here's a brief overview of these APIs:
-
-1. `sign-up`: This API allows new users to register themselves in the application. It takes user details such as `email`, `password`, and other necessary attributes as input and creates a new user in the AWS Cognito User Pool.
-
-2. `verification`: After signing up, users need to verify their account to confirm their identity. This API sends a verification code to the user's email, which the user must enter to verify their account.
-
-3. `sign-in`: This API allows registered users to log in to the application. It takes the `email` and `password` as input and returns a JWT token if the credentials are valid.
-
-4. `forgot-password`: If a user forgets their password, this API can be used to initiate the password recovery process. It sends a verification code to the user's `email`, which can be used to reset the password.
-
-5. `reset-password`: This API allows users to reset their password. It takes the verification code received from the `forgot-password` API and the new password as input and updates the user's password in the AWS Cognito User Pool.
-
-For a detailed overview of the APIs provided by this module, please refer to the `./src/controllers/auth.ts`. This file contains the implementation of these APIs, including the request parameters, response format, error handling, and interaction with AWS Cognito.
-
-Please note that the actual implementation and usage of these APIs may vary depending on your application's requirements and the configuration of your AWS Cognito User Pool. Always refer to the AWS Cognito documentation and the `fw24-auth-cognito` module documentation for the most accurate and up-to-date information.
+The `fw24-auth-cognito` is a robust authentication and authorization module designed specifically for the Framework24 (FW24) project. This module is built on top of AWS Cognito, providing comprehensive user identity management, multi-factor authentication (MFA), and attribute verification capabilities.
 
 ## Installation
-
-To install the fw24-auth-cognito module, you can use the npm package manager. Run the following command in your terminal inside your project:
 
 ```shell
 npm install @ten24group/fw24-auth-cognito
 ```
 
-## Adding the Module to Your Project Using cli24
-
-You can also add it to your FW24 project using the `cli24`. Navigate to the root directory of your project and run the following command:
+Or using cli24:
 
 ```shell
 cli24 add-module auth-cognito
 ```
 
-## Basic usages
+## Features
 
-Add auth module with default configurations:
+- User Management (signup, signin, signout)
+- Email and Username Authentication
+- Social Authentication (Google, Facebook)
+- Account Linking (Email + Social Providers)
+- Multi-Factor Authentication (MFA)
+- User Attribute Verification
+- Password Management
+- User Groups and Permissions
+- Custom Email Templates
+- AWS IAM Integration
 
-```shell
+## Basic Usage
+
+```typescript
 import { AuthModule } from '@ten24group/fw24-auth-cognito';
 
 const authModule = new AuthModule({});
 ```
 
-## Detail usages
+## Comprehensive Configuration
 
-Add auth module with configurations
+```typescript
+import { AuthModule } from '@ten24group/fw24-auth-cognito';
+import { Mfa, UserPoolEmail, VerificationEmailStyle } from 'aws-cdk-lib/aws-cognito';
+import { Duration } from 'aws-cdk-lib';
 
-```ts
-  import { AuthModule } from '@ten24group/fw24-auth-cognito';
+const authModule = new AuthModule({
+  userPool: {
+    props: {
+      selfSignUpEnabled: true,
+      signInAliases: {
+        email: true,
+        username: true,
+      },
+      // Configure MFA settings
+      mfa: Mfa.OPTIONAL,
+      mfaSecondFactor: {
+        email: true,
+        sms: true,
+        otp: false,
+      },
+      // Configure email settings
+      email: UserPoolEmail.withSES({
+        sesVerifiedDomain: 'yourdomain.com',
+        fromEmail: 'noreply@yourdomain.com',
+        sesRegion: 'us-east-1',
+      }),
+      // Configure verification settings
+      userVerification: {
+        emailStyle: VerificationEmailStyle.CODE,
+        emailSubject: 'Verify your email',
+        emailBody: 'Your verification code is {####}',
+      }
+    }
+  },
+  // Configure user pool client
+  userPoolClient: {
+    props: {
+      authFlows: {
+        user: true,
+        userPassword: true,
+        adminUserPassword: true,
+        custom: true,
+      },
+      authSessionValidity: Duration.minutes(15),
+      preventUserExistenceErrors: true,
+    }
+  },
+  // Configure user groups
+  groups: [
+    {
+      name: 'admin',
+      precedence: 0,
+      policyFilePaths: ['./src/policy/admin.json'],
+      routes: ['mauth/addUserToGroup', 'mauth/removeUserFromGroup'],
+    },
+    {
+      name: 'user',
+      precedence: 1,
+      autoUserSignup: true,
+      policyFilePaths: ['./src/policy/user.json'],
+    }
+  ],
+  // Configure custom message templates
+  customMessageTemplates: {
+    signup: {
+      subject: 'Welcome to Our App',
+      message: 'Your verification code is {####}',
+    },
+    forgotPassword: {
+      subject: 'Reset Your Password',
+      message: 'Your password reset code is {####}',
+    },
+    verifyUserAttribute: {
+      subject: 'Verify Your Email',
+      message: 'Your verification code is {####}',
+    },
+    authentication: {
+      subject: 'Authentication Code',
+      message: 'Your authentication code is {####}',
+    }
+  }
+});
+```
 
-  const authModule = new AuthModule({
-    userPool: {
-      props: {
-        userPoolName: 'authmodule'
-        selfSignUpEnabled: true,
-        // all user pool properties available here: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_cognito.UserPoolProps.html
+## Social Authentication Configuration
+
+### Setting up Google OAuth Credentials
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the OAuth consent screen:
+   - Go to "APIs & Services" > "OAuth consent screen"
+   - Choose "External" user type
+   - Fill in the required app information
+   - Add the scopes: "email", "profile", "openid"
+   - Add test users if in testing mode
+
+4. Create OAuth credentials:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth client ID"
+   - Choose "Web application"
+   - Add authorized JavaScript origins:
+     ```
+     https://{your-cognito-domain}.auth.{region}.amazoncognito.com
+     ```
+   - Add authorized redirect URIs:
+     ```
+     https://{your-cognito-domain}.auth.{region}.amazoncognito.com/oauth2/idpresponse
+     ```
+
+5. Store your credentials securely:
+   - Never commit credentials to version control
+   - Use environment variables or AWS Secrets Manager
+   - Update your configuration with the credentials:
+
+```typescript
+const authModule = new AuthModule({
+  userPool: {
+    domain: {
+      // Optional: specify a custom domain prefix
+      cognitoDomainPrefix: 'my-app-auth',
+      // Or use a custom domain
+      customDomain: {
+        domainName: 'auth.example.com',
+        certificateArn: 'arn:aws:acm:region:account:certificate/certificate-id'
       }
     },
-    groups: [
-      {
-        name: 'admin',
-        precedence: 0
-        policyFilePaths: [
-          './src/policy/admin.json',
-        ],
-        routes: ['mauth/addUserToGroup/', 'mauth/removeUserFromGroup/'],
-      },
-      {
-        name: 'user',
-        precedence: 1
-        autoUserSignup: true,
-        policyFilePaths: [
-          './src/policy/user.json',
-        ],
+    socialProviders: {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        scopes: ['email', 'profile', 'openid'],
+        attributeMapping: {
+          email: 'email',
+          givenName: 'given_name',
+          familyName: 'family_name',
+          picture: 'picture'
+        }
       }
-    ],
-    useAsDefaultAuthorizer: true
-  });
-
-```
-
-## Customize the Authentication Flow
-
-The `fw24-auth-cognito` module leverages `AWS Cognito` for authentication, and the customization of the authentication flow largely depends on the features and capabilities provided by AWS Cognito itself.
-
-In the snippet below, you can see that the `AuthModule` is instantiated with a configuration object. This object can include a `userPool` property, which is an object that can have a props property. This props property can contain all the user pool properties available in AWS Cognito. You can find the full list of these properties in the [AWS Cognito UserPoolProps documentation](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_cognito.UserPoolProps.html).
-
-For example, to customize the authentication flow to add multi-factor authentication (MFA), you can set the `mfa` and `mfaSecondFactor` properties in the `props` object:
-
-```ts
-const authModule = new AuthModule({
-  userPool: {
-    props: {
-      userPoolName: 'authmodule',
-      selfSignUpEnabled: true,
-      mfa: 'OPTIONAL',
-      mfaSecondFactor: {
-        sms: true,
-        otp: true
-      },
-      // other user pool properties...
     }
-  },
-  // other configuration properties...
+  }
 });
 ```
 
-In this example, MFA is set to optional, meaning the user has the choice to set up MFA for their account, and both SMS and one-time password (OTP) are enabled as the second factor for MFA.
+### Setting up Facebook OAuth Credentials
 
-Remember, any customization of the authentication flow should comply with AWS Cognito's capabilities and limitations.
+1. Go to the [Meta for Developers](https://developers.facebook.com/)
+2. Create a new app or select an existing one:
+   - Click "Create App"
+   - Choose "Consumer" as the app type
+   - Fill in your app name and contact email
 
-## Configure user Sign-up Settings
+3. Configure Facebook Login:
+   - From the app dashboard, go to "Add Products"
+   - Click "Set Up" on "Facebook Login"
+   - Choose "Web" as the platform
 
-The user sign-up settings can be configured through the `userPool` property in the configuration object passed to the AuthModule constructor.
+4. Configure OAuth settings:
+   - Go to "Facebook Login" > "Settings"
+   - Add OAuth Redirect URIs:
+     ```
+     https://{your-cognito-domain}.auth.{region}.amazoncognito.com/oauth2/idpresponse
+     ```
+   - Under "Client OAuth Settings":
+     - Enable "Client OAuth Login"
+     - Enable "Web OAuth Login"
+     - Add the following to "Valid OAuth Redirect URIs":
+       ```
+       https://{your-cognito-domain}.auth.{region}.amazoncognito.com/oauth2/idpresponse
+       ```
 
-For example, to enable self sign-up and to specify the attributes that users must provide when they sign up, you can set the `selfSignUpEnabled` and `standardAttributes` properties in the `props` object:
+5. Get your credentials:
+   - Go to "Settings" > "Basic"
+   - Note your App ID (this is your client ID)
+   - Click "Show" to view your App Secret (this is your client secret)
 
-```ts
+6. Configure permissions:
+   - Go to "App Review" > "Permissions and Features"
+   - Add the following permissions:
+     - `email`
+     - `public_profile`
+
+7. Update your AuthModule configuration:
+```typescript
 const authModule = new AuthModule({
   userPool: {
+    socialProviders: {
+      facebook: {
+        clientId: process.env.FACEBOOK_APP_ID,
+        clientSecret: process.env.FACEBOOK_APP_SECRET,
+        scopes: ['email', 'public_profile'],
+        attributeMapping: {
+          email: 'email',
+          name: 'name',
+          picture: 'picture',
+          'custom:first_name': 'first_name',
+          'custom:last_name': 'last_name'
+        }
+      }
+    },
+    domain: {
+      cognitoDomainPrefix: 'your-domain-prefix'
+    }
+  },
+  userPoolClient: {
     props: {
-      userPoolName: 'authmodule',
-      selfSignUpEnabled: true,
-      standardAttributes: {
-        email: {
-          required: true,
-          mutable: true,
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true
         },
-        fullname: {
-          required: true,
-          mutable: true,
-        },
-        // other attributes...
-      },
-      // other user pool properties...
+        scopes: ['email', 'openid', 'profile'],
+        callbackUrls: ['http://localhost:3000/auth/callback']
+      }
     }
-  },
-  // other configuration properties...
+  }
 });
 ```
 
-In this example, self sign-up is enabled, and users are required to provide their email and full name when they sign up. Both the email and full name attributes are mutable, meaning they can be changed after the user has signed up.
+**Attribute Mapping:**
+Facebook provides the following attributes that can be mapped to Cognito:
+- `id`: Unique Facebook ID
+- `email`: User's email address
+- `name`: Full name
+- `first_name`: First name
+- `last_name`: Last name
+- `picture`: Profile picture URL
+- `gender`: User's gender
+- `locale`: User's locale
+- `timezone`: User's timezone
 
-## Customize the Email-templates for Verification and Password-reset
+You can map these to standard or custom attributes in Cognito using the `attributeMapping` configuration.
 
-The email templates for user verification and password reset can be customized through the `userPool` property in the configuration object passed to the `AuthModule` constructor.
+### Configure social providers in your AuthModule:
 
-For example, to customize the verification and password reset email templates, you can set the `userVerification` and `forgotPassword` properties in the `props` object:
-
-```ts
+```typescript
 const authModule = new AuthModule({
+  // ... other config ...
+  socialProviders: {
+    google: {
+      clientId: 'your-google-client-id',
+      clientSecret: 'your-google-client-secret',
+      scopes: ['email', 'profile', 'openid'],
+      attributeMapping: {
+        email: 'email',
+        givenName: 'given_name',
+        familyName: 'family_name',
+        picture: 'picture'
+      }
+    },
+    facebook: {
+      clientId: 'your-facebook-app-id',
+      clientSecret: 'your-facebook-app-secret',
+      scopes: ['email', 'public_profile'],
+      attributeMapping: {
+        email: 'email',
+        givenName: 'first_name',
+        familyName: 'last_name',
+        picture: 'picture'
+      }
+    }
+  },
   userPool: {
     props: {
-      userPoolName: 'authmodule',
-      selfSignUpEnabled: true,
-      userVerification: {
-        emailSubject: 'Verify your email for our app',
-        emailBody: 'Hello {username}, Thanks for signing up to our app! Your verification code is {####}',
-        emailStyle: 'CODE',
-        smsMessage: 'Your verification code for our app is {####}'
+      // Enable email as sign-in alias for account linking
+      signInAliases: {
+        email: true
       },
-      forgotPassword: {
-        emailSubject: 'Reset your password for our app',
-        emailBody: 'Hello {username}, It seems that you forgot your password for our app. Your verification code is {####}',
-        emailStyle: 'CODE',
-        smsMessage: 'Your verification code to reset your password for our app is {####}'
+      // Auto-verify email for account linking
+      autoVerify: {
+        email: true
       },
-      // other user pool properties...
+      // Configure account recovery
+      accountRecovery: AccountRecovery.EMAIL_ONLY,
     }
   },
-  // other configuration properties...
+  userPoolClient: {
+    props: {
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+          implicitCodeGrant: true,
+        },
+        scopes: ['email', 'openid', 'profile'],
+        callbackUrls: ['http://localhost:3000/auth/callback']
+      }
+    }
+  }
 });
 ```
 
-In this example, the verification and password reset emails are customized with specific subjects and bodies. The `{username}` and `{####}` placeholders in the email body are replaced with the actual username and verification code, respectively.
+## Social Authentication APIs
+
+### Get Social Sign-in Configuration
+```typescript
+POST /mauth/getSocialSignInConfig
+{
+  "redirectUri": "http://localhost:3000/auth/callback"
+}
+
+// Response
+{
+  "Google": {
+    "authorizationUrl": "https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/authorize?...",
+    "clientId": "your-client-id",
+    "redirectUri": "http://localhost:3000/auth/callback",
+    "grantType": "authorization_code"
+  },
+  "Facebook": {
+    "authorizationUrl": "https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/authorize?...",
+    "clientId": "your-client-id",
+    "redirectUri": "http://localhost:3000/auth/callback",
+    "grantType": "authorization_code"
+  }
+}
+```
+
+### Initiate Social Sign-in
+```typescript
+POST /mauth/initiateSocialSignIn
+{
+  "provider": "Google",  // or "Facebook"
+  "redirectUri": "http://localhost:3000/auth/callback"
+}
+
+// Response
+{
+  "authorizationUrl": "https://your-cognito-domain/oauth2/authorize?..."
+}
+```
+
+### Complete Social Sign-in
+```typescript
+POST /mauth/completeSocialSignIn
+{
+  "provider": "Google",
+  "code": "authorization-code-from-callback",
+  "redirectUri": "http://localhost:3000/auth/callback"
+}
+
+// Response
+{
+  "AccessToken": "access-token",
+  "IdToken": "id-token",
+  "RefreshToken": "refresh-token",
+  "TokenType": "Bearer",
+  "ExpiresIn": 3600,
+  "isNewUser": false,
+  "provider": "Google"
+}
+```
+
+### Link Social Provider
+```typescript
+POST /mauth/linkSocialProvider
+{
+  "accessToken": "user-access-token",
+  "provider": "Google",
+  "code": "authorization-code-from-oauth",
+  "redirectUri": "http://localhost:3000/auth/callback"
+}
+
+// Response
+{
+  "message": "Social provider linked successfully",
+  "provider": "Google"
+}
+```
+
+### Unlink Social Provider
+```typescript
+POST /mauth/unlinkSocialProvider
+{
+  "accessToken": "user-access-token",
+  "provider": "Google"
+}
+
+// Response
+{
+  "message": "Social provider unlinked successfully",
+  "provider": "Google"
+}
+```
+
+## Account Linking Scenarios
+
+### Scenario 1: Email First, Then Social
+1. User signs up with email/password
+2. User later decides to link their social account
+3. User initiates social sign-in
+4. If the social account's email matches the existing account:
+   - The accounts are automatically linked
+   - User can now sign in with either method
+
+### Scenario 2: Social First, Then Email
+1. User signs up with social provider
+2. User's email is verified automatically
+3. User can set up password through:
+   - Forgot password flow
+   - Or admin setting temporary password
+4. User can now sign in with either method
+
+## Authentication APIs
+
+### User Registration and Verification
+
+#### Sign Up
+```typescript
+// Sign up with email
+POST /mauth/signup
+{
+  "email": "user@example.com",
+  "password": "SecurePassword123!"
+}
+
+// Sign up with username
+{
+  "username": "johndoe",
+  "password": "SecurePassword123!"
+}
+
+// Sign up with both
+{
+  "username": "johndoe",
+  "email": "user@example.com",
+  "password": "SecurePassword123!"
+}
+```
+
+#### Verify Email
+```typescript
+POST /mauth/verify
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+```
+
+#### Resend Verification Code
+```typescript
+POST /mauth/resendVerificationCode
+{
+  "email": "user@example.com"
+}
+// or
+{
+  "username": "johndoe"
+}
+```
+
+### User Authentication
+
+#### Get Login Options
+```typescript
+POST /mauth/getLoginOptions
+{
+  "username": "user@example.com"
+}
+```
+
+#### Sign In
+```typescript
+POST /mauth/signin
+{
+  "email": "user@example.com",
+  "password": "SecurePassword123!"
+}
+// or
+{
+  "username": "johndoe",
+  "password": "SecurePassword123!"
+}
+```
+
+#### Sign Out
+```typescript
+POST /mauth/signout
+{
+  "accessToken": "user-access-token"
+}
+```
+
+### Multi-Factor Authentication (MFA)
+
+#### Initiate OTP Authentication
+```typescript
+POST /mauth/initiateOtpAuth
+{
+  "username": "user@example.com",
+  "session": "session-token-from-getLoginOptions"
+}
+```
+
+#### Complete OTP Authentication
+```typescript
+POST /mauth/respondToOtpChallenge
+{
+  "username": "user@example.com",
+  "session": "session-token",
+  "code": "123456"
+}
+```
+
+#### Update User MFA Preferences
+```typescript
+POST /mauth/updateUserMfaPreference
+{
+  "accessToken": "user-access-token",
+  "mfaPreference": {
+    "enabledMethods": ["EMAIL", "SMS"],
+    "preferredMethod": "EMAIL"
+  }
+}
+```
+
+### User Attribute Management
+
+#### Get Attribute Verification Code
+```typescript
+POST /mauth/getUserAttributeVerificationCode
+{
+  "accessToken": "user-access-token",
+  "attributeName": "email"
+}
+```
+
+#### Verify User Attribute
+```typescript
+POST /mauth/verifyUserAttribute
+{
+  "accessToken": "user-access-token",
+  "attributeName": "email",
+  "code": "123456"
+}
+```
+
+### Password Management
+
+#### Change Password
+```typescript
+POST /mauth/changePassword
+{
+  "accessToken": "user-access-token",
+  "oldPassword": "OldPassword123!",
+  "newPassword": "NewPassword456!"
+}
+```
+
+#### Forgot Password
+```typescript
+POST /mauth/forgotPassword
+{
+  "email": "user@example.com"
+}
+```
+
+#### Reset Password
+```typescript
+POST /mauth/confirmForgotPassword
+{
+  "email": "user@example.com",
+  "code": "123456",
+  "newPassword": "NewPassword456!"
+}
+```
+
+### Token Management
+
+#### Refresh Token
+```typescript
+POST /mauth/refreshToken
+{
+  "refreshToken": "your-refresh-token"
+}
+```
+
+#### Get AWS Credentials
+```typescript
+POST /mauth/getCredentials
+{
+  "idToken": "cognito-id-token"
+}
+```
+
+### Group Management (Admin Only)
+
+#### Add User to Group
+```typescript
+POST /mauth/addUserToGroup
+{
+  "email": "user@example.com",
+  "groupName": "admin"
+}
+```
+
+#### Set User MFA Settings (Admin)
+```typescript
+POST /mauth/setUserMfaSettings
+{
+  "username": "user@example.com",
+  "enabledMethods": ["EMAIL", "SMS"],
+  "preferredMethod": "EMAIL"
+}
+```
+
+## Customizing Email Templates
+
+You can customize various email templates through the `customMessageTemplates` configuration:
+
+```typescript
+customMessageTemplates: {
+  signup: {
+    subject: 'Welcome to Our App',
+    message: 'Your verification code is {####}',
+  },
+  adminCreateUser: {
+    subject: 'Your temporary password',
+    message: 'Your temporary password is {####}',
+  },
+  resendCode: {
+    subject: 'New verification code',
+    message: 'Your new verification code is {####}',
+  },
+  forgotPassword: {
+    subject: 'Reset your password',
+    message: 'Use this code to reset your password: {####}',
+  },
+  verifyUserAttribute: {
+    subject: 'Verify your email',
+    message: 'Use this code to verify your email: {####}',
+  },
+  authentication: {
+    subject: 'Authentication required',
+    message: 'Your authentication code is {####}',
+  }
+}
+```
+
+## Security Best Practices
+
+1. Always use HTTPS for API endpoints
+2. Implement proper password policies
+3. Enable MFA for sensitive operations
+4. Use short-lived access tokens
+5. Regularly rotate credentials
+6. Monitor authentication attempts
+7. Implement rate limiting
+8. Use secure session management
+
+## Error Handling
+
+The module provides standardized error responses for various scenarios:
+
+- 400: Bad Request (invalid input)
+- 401: Unauthorized (invalid credentials)
+- 403: Forbidden (insufficient permissions)
+- 404: Not Found
+- 429: Too Many Requests
+- 500: Internal Server Error
+
+Each error response includes a message explaining the error:
+
+```json
+{
+  "message": "Error description here"
+}
+```
+
+## AWS Configuration
+
+Ensure your AWS credentials are properly configured with the necessary permissions for Cognito operations. The module requires the following AWS services:
+
+- Amazon Cognito User Pools
+- Amazon Cognito Identity Pools (if using AWS IAM authentication)
+- Amazon SES (if using custom email templates)
+- IAM roles and policies
+
+## Additional Resources
+
+- [AWS Cognito Documentation](https://docs.aws.amazon.com/cognito/)
+- [Framework24 Documentation](https://framework24.io)
+- [Security Best Practices](https://docs.aws.amazon.com/cognito/latest/developerguide/security-best-practices.html)

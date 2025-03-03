@@ -1,7 +1,7 @@
 import { AuthModule } from './../index';
 import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject  } from '@ten24group/fw24';
 
-import { IAuthService, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions } from '../interfaces';
+import { IAuthService, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider } from '../interfaces';
 import { AuthServiceDIToken } from '../const';
 
 type SignUpRequest = {
@@ -48,7 +48,9 @@ const signInValidations: InputValidationRule<SignInRequest> = {
     env: [
         { name: 'userPoolID', prefix: 'userpool_authmodule' },
         { name: 'userPoolClientID', prefix: 'userpoolclient_authmodule' },
-        { name: 'identityPoolID', prefix: 'identitypool_authmodule' }
+        { name: 'identityPoolID', prefix: 'identitypool_authmodule' },
+        { name: 'authDomain', prefix: 'userpool_authmodule' },
+        { name: 'supportedIdentityProviders', prefix: 'userpool_authmodule' },
     ],
     module: {
         providedBy: AuthModule
@@ -856,5 +858,211 @@ export class AuthController extends APIController {
         await this.authService.setUserMfaSettings({ username, enabledMethods, preferredMethod });
 
         return res.json({ message: 'User MFA settings updated' });
+    }
+
+    /**
+     * Get social sign-in configuration
+     * This endpoint returns the configuration for all enabled social providers
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "redirectUri": "http://localhost:3000/auth/callback"
+     * }
+     * ```
+     * 
+     * Success response:
+     * ```json
+     * {
+     *   "Google": {
+     *     "authorizationUrl": "https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/authorize?...",
+     *     "clientId": "your-client-id",
+     *     "redirectUri": "http://localhost:3000/auth/callback",
+     *     "grantType": "authorization_code"
+     *   },
+     *   "Facebook": {
+     *     "authorizationUrl": "https://your-cognito-domain.auth.region.amazoncognito.com/oauth2/authorize?...",
+     *     "clientId": "your-client-id",
+     *     "redirectUri": "http://localhost:3000/auth/callback",
+     *     "grantType": "authorization_code"
+     *   }
+     * }
+     * ```
+     */
+    @Post('/getSocialSignInConfig', {
+        validations: {
+            redirectUri: { required: true }
+        }
+    })
+    async getSocialSignInConfig(req: Request, res: Response) {
+        const { redirectUri } = req.body as { redirectUri: string };
+
+        const configs = await this.authService.getSocialSignInConfig(redirectUri);
+
+        return res.json(configs);
+    }
+
+    /**
+     * Initiate social sign-in flow
+     * This endpoint returns the URL to redirect the user to for social login
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "provider": "Google",
+     *   "redirectUri": "http://localhost:3000/auth/callback"
+     * }
+     * ```
+     * 
+     * Success response:
+     * ```json
+     * {
+     *   "authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth?..."
+     * }
+     * ```
+     */
+    @Post('/initiateSocialSignIn', {
+        validations: {
+            provider: { required: true },
+            redirectUri: { required: true }
+        }
+    })
+    async initiateSocialSignIn(req: Request, res: Response) {
+        const { provider, redirectUri } = req.body as { provider: SocialProvider; redirectUri: string };
+
+        const authUrl = await this.authService.initiateSocialSignIn(provider, redirectUri);
+
+        return res.json({ authorizationUrl: authUrl });
+    }
+
+    /**
+     * Complete social sign-in flow
+     * This endpoint handles the OAuth callback and returns user tokens
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "provider": "Google",
+     *   "code": "authorization-code-from-callback",
+     *   "redirectUri": "http://localhost:3000/auth/callback"
+     * }
+     * ```
+     * 
+     * Success response:
+     * ```json
+     * {
+     *   "AccessToken": "access-token",
+     *   "IdToken": "id-token",
+     *   "RefreshToken": "refresh-token",
+     *   "TokenType": "Bearer",
+     *   "ExpiresIn": 3600,
+     *   "isNewUser": false,
+     *   "provider": "Google"
+     * }
+     * ```
+     */
+    @Post('/completeSocialSignIn', {
+        validations: {
+            provider: { required: true },
+            code: { required: true },
+            redirectUri: { required: true }
+        }
+    })
+    async completeSocialSignIn(req: Request, res: Response) {
+        const { provider, code, redirectUri } = req.body as { 
+            provider: SocialProvider;
+            code: string;
+            redirectUri: string;
+        };
+
+        const result = await this.authService.completeSocialSignIn(provider, code, redirectUri);
+
+        return res.json(result);
+    }
+
+    /**
+     * Link social provider to existing account
+     * This endpoint allows users to link their social accounts to their existing Cognito account
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "accessToken": "user-access-token",
+     *   "provider": "Google",
+     *   "code": "authorization-code-from-oauth",
+     *   "redirectUri": "http://localhost:3000/auth/callback"
+     * }
+     * ```
+     * 
+     * Success response:
+     * ```json
+     * {
+     *   "message": "Social provider linked successfully",
+     *   "provider": "Google"
+     * }
+     * ```
+     */
+    @Post('/linkSocialProvider', {
+        validations: {
+            accessToken: { required: true },
+            provider: { required: true },
+            code: { required: true },
+            redirectUri: { required: true }
+        }
+    })
+    async linkSocialProvider(req: Request, res: Response) {
+        const { accessToken, provider, code, redirectUri } = req.body as {
+            accessToken: string;
+            provider: SocialProvider;
+            code: string;
+            redirectUri: string;
+        };
+
+        await this.authService.linkSocialProvider(accessToken, provider, code, redirectUri);
+
+        return res.json({
+            message: 'Social provider linked successfully',
+            provider
+        });
+    }
+
+    /**
+     * Unlink social provider from account
+     * This endpoint allows users to remove a linked social provider from their account
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "accessToken": "user-access-token",
+     *   "provider": "Google"
+     * }
+     * ```
+     * 
+     * Success response:
+     * ```json
+     * {
+     *   "message": "Social provider unlinked successfully",
+     *   "provider": "Google"
+     * }
+     * ```
+     */
+    @Post('/unlinkSocialProvider', {
+        validations: {
+            accessToken: { required: true },
+            provider: { required: true }
+        }
+    })
+    async unlinkSocialProvider(req: Request, res: Response) {
+        const { accessToken, provider } = req.body as {
+            accessToken: string;
+            provider: SocialProvider;
+        };
+
+        await this.authService.unlinkSocialProvider(accessToken, provider);
+
+        return res.json({
+            message: 'Social provider unlinked successfully',
+            provider
+        });
     }
 }
