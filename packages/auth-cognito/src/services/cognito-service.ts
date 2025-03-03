@@ -263,14 +263,14 @@ export class CognitoService implements IAuthService {
 
     // Utility functions
     private getIdentityPoolId() {
-        return resolveEnvValueFor({ key: 'identityPoolID' }) || '';
+        return resolveEnvValueFor({ key: 'identityPoolId' }) || '';
     }
 
     private getUserPoolClientId() {
-        return resolveEnvValueFor({ key: 'userPoolClientID' }) || '';
+        return resolveEnvValueFor({ key: 'userPoolClientId' }) || '';
     }
 
     private getUserPoolID() {
-        return resolveEnvValueFor({ key: 'userPoolID' }) || '';
+        return resolveEnvValueFor({ key: 'userPoolId' }) || '';
     }
 }

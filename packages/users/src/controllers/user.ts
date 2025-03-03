@@ -11,8 +11,8 @@ import { AuthModulePolicy_AllowCreateUserAuth, NEW_USER_GROUPS_KEY, TABLE_NAME_K
 	},
 
 	env: [
-		{ name: 'userPoolClientID', prefix: 'authmodule' },
-		{ name: 'userPoolID', prefix: 'authmodule' },
+		{ name: 'userPoolClientID', prefix: 'userPoolClientId_authmodule' },
+		{ name: 'userPoolID', prefix: 'userPoolClientId_authmodule' },
 		{ name: `${NEW_USER_GROUPS_KEY}`, prefix: UsersModule.name, }
 	],
 	policies: [ 
