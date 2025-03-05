@@ -17,7 +17,8 @@ export type SignUpOptions = {
     username: string;
     password: string;
     email?: string;  // Optional email
-    attributes?: Array<{Name: string, Value: string}>;
+    autoSignIn?: boolean;  // Optional parameter to automatically sign in after signup
+    [key: string]: any;  // Allow arbitrary string properties
 }
 
 export type CreateUserOptions = {
@@ -44,8 +45,17 @@ export type AdminMfaSettings = {
     preferredMethod?: MfaMethod;
 }
 
+export type UserDetails = {
+    username: string;
+    email?: string;
+    enabled?: boolean;
+    userStatus?: string;
+    attributes?: Array<{ Name: string, Value: string }>;
+}
+
 export interface IAuthService {
-    signup(options: SignUpOptions): Promise<void>;
+    getUser(usernameOrEmail: string): Promise<UserDetails>;
+    signup(options: SignUpOptions): Promise<SignInResult | void>;
     signin(username: string, password: string): Promise<SignInResult>;
     signout(accessToken: string): Promise<void>;
     verify(username: string, code: string): Promise<void>;
@@ -123,6 +133,8 @@ export type ResetUserPasswordOptions = {
 
 export interface IAuthModuleClient {
     createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
+
+    getUser(usernameOrEmail: string): Promise<UserDetails>;
 
     addUserToGroup(options: AddUserToGroupOptions): Promise<void>;
 

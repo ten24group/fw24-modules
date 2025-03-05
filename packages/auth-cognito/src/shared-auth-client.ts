@@ -1,7 +1,6 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
-import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult } from "./interfaces";
-import { UserType } from "@aws-sdk/client-cognito-identity-provider";
+import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UserDetails } from "./interfaces";
 
 export class SharedAuthClient implements IAuthModuleClient {
 
@@ -11,8 +10,8 @@ export class SharedAuthClient implements IAuthModuleClient {
         @Inject(AuthServiceDIToken) private readonly authService: IAuthService
     ) { }
 
-    async getUserByUserSub(userSub: string): Promise<UserType | undefined> {
-        return this.authService.getUserByUserSub(userSub)
+    async getUser(usernameOrEmail: string): Promise<UserDetails> {
+        return this.authService.getUser(usernameOrEmail)
     }
 
     async createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult> {

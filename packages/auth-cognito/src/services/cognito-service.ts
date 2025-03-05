@@ -1,6 +1,6 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { resolveEnvValueFor } from "@ten24group/fw24";
 
@@ -9,18 +9,18 @@ export class CognitoService implements IAuthService {
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
 
-    async signup(options: SignUpOptions): Promise<void> {
-        const { username, password, email, attributes = [] } = options;
+    async signup(options: SignUpOptions): Promise<SignInResult | void> {
+        const { username, password, email, autoSignIn = false } = options;
         const userPoolClientId = this.getUserPoolClientId();
 
         if (!userPoolClientId) {
             throw new Error('User pool client ID is not configured');
         }
 
-        // Build user attributes array
-        const userAttributes = [...attributes];
+        // Build user attributes array with only standard Cognito attributes
+        const userAttributes: Array<{ Name: string, Value: string }> = [];
         
-        // If email is provided, always add it as an attribute
+        // Add standard Cognito attributes
         if (email) {
             userAttributes.push({
                 Name: 'email',
@@ -35,14 +35,29 @@ export class CognitoService implements IAuthService {
             });
         }
 
+        // Convert all custom attributes to clientMetadata format
+        const clientMetadata: { [key: string]: string } = {};
+        Object.entries(options).forEach(([key, value]) => {
+            // Skip reserved properties and standard Cognito attributes
+            if (!['username', 'password', 'confirmPassword', 'email', 'autoSignIn'].includes(key)) {
+                clientMetadata[key] = String(value);
+            }
+        });
+
         await this.identityProviderClient.send(
             new SignUpCommand({
                 ClientId: userPoolClientId,
                 Username: username,
                 Password: password,
                 UserAttributes: userAttributes,
+                ClientMetadata: clientMetadata
             })
         );
+
+        // If autoSignIn is true, attempt to sign in immediately after signup
+        if (autoSignIn) {
+            return this.signin(username, password);
+        }
     }
 
     // Helper method to validate email format
@@ -676,5 +691,58 @@ export class CognitoService implements IAuthService {
 
     private getAuthDomain(): string {
         return resolveEnvValueFor({key: 'authDomain'}) || '';
+    }
+
+    async getUser(usernameOrEmail: string): Promise<UserDetails> {
+        const userPoolId = this.getUserPoolID();
+        
+        // First try to get user directly by username
+        try {
+            const result = await this.identityProviderClient.send(
+                new AdminGetUserCommand({
+                    UserPoolId: userPoolId,
+                    Username: usernameOrEmail,
+                })
+            );
+
+            return {
+                username: result.Username!,
+                email: result.UserAttributes?.find(attr => attr.Name === 'email')?.Value,
+                enabled: result.Enabled,
+                userStatus: result.UserStatus,
+                attributes: result.UserAttributes?.map(attr => ({
+                    Name: attr.Name || '',
+                    Value: attr.Value || ''
+                })),
+            };
+        } catch (error: any) {
+            // If not found by username and input looks like email, try searching by email
+            if (error.name === 'UserNotFoundException' && this.isValidEmail(usernameOrEmail)) {
+                const result = await this.identityProviderClient.send(
+                    new ListUsersCommand({
+                        UserPoolId: userPoolId,
+                        Filter: `email = "${usernameOrEmail}"`,
+                        Limit: 1,
+                    })
+                );
+
+                if (!result.Users || result.Users.length === 0) {
+                    throw new Error('User not found');
+                }
+
+                const user = result.Users[0];
+                return {
+                    username: user.Username!,
+                    email: user.Attributes?.find(attr => attr.Name === 'email')?.Value,
+                    enabled: user.Enabled,
+                    userStatus: user.UserStatus,
+                    attributes: user.Attributes?.map(attr => ({
+                        Name: attr.Name || '',
+                        Value: attr.Value || ''
+                    })),
+                };
+            }
+            throw error;
+        }
     }
 }

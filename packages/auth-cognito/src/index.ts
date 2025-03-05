@@ -1,5 +1,7 @@
 import { join } from 'path';
 import { AbstractFw24Module, AuthConstruct, createLogger, DIModule, FW24Construct, ILogger, LambdaFunctionProps, type ArrayElement } from '@ten24group/fw24';
+import { UserPoolOperation } from 'aws-cdk-lib/aws-cognito';
+import { TriggerType } from '@ten24group/fw24';
 import { AuthModuleClientDIToken, AuthModulePolicy_AllowCreateUserAuth, AuthServiceDIToken, CUSTOM_MESSAGE_ADMIN_CREATE_USER, CUSTOM_MESSAGE_AUTHENTICATE, CUSTOM_MESSAGE_FORGOT_PASSWORD, CUSTOM_MESSAGE_RESEND_CODE, CUSTOM_MESSAGE_SIGN_UP, CUSTOM_MESSAGE_UPDATE_USER_ATTRIBUTE, CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE, CUSTOM_SUBJECT_ADMIN_CREATE_USER, CUSTOM_SUBJECT_AUTHENTICATE, CUSTOM_SUBJECT_FORGOT_PASSWORD, CUSTOM_SUBJECT_RESEND_CODE, CUSTOM_SUBJECT_SIGN_UP, CUSTOM_SUBJECT_UPDATE_USER_ATTRIBUTE, CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE } from './const';
 import { IAuthModuleConfig } from './interfaces';
 import { CognitoService } from './services/cognito-service';
@@ -52,7 +54,10 @@ export class AuthModule extends AbstractFw24Module {
         }
         this.logger.debug("AuthModule: ", config);
 
-        // if autoVerifyUser is true, make sure user is automatically verified
+        // Create a map of triggers by type to handle overrides
+        const triggerMap = new Map<UserPoolOperation | TriggerType, ArrayElement<IAuthModuleConfig['triggers']>>();
+
+        // Add auto-verify trigger if enabled
         if(config.autoVerifyUser){
             const preSignupTrigger = {
                 trigger: 'PRE_SIGN_UP' as const,
@@ -60,22 +65,27 @@ export class AuthModule extends AbstractFw24Module {
                     entry: join(__dirname, 'functions/pre-signup-autoverify.js'),
                     policies: []
                 }
-            }
-            config.triggers?.push(preSignupTrigger);
+            };
+            triggerMap.set(preSignupTrigger.trigger, preSignupTrigger);
         }
 
-        // Combine all triggers
-        const allTriggers = [
-            ...(config.triggers ?? []),
-        ];
-
+        // Add custom message trigger if templates are provided
         if(config.customMessageTemplates){
             const customMessageTrigger = this.makeCustomMessageHandlerTrigger(config.customMessageTemplates);
             if (customMessageTrigger) {
-                allTriggers.push(customMessageTrigger);
+                triggerMap.set(customMessageTrigger.trigger, customMessageTrigger);
             }
         }
 
+        // Override with any user-provided triggers
+        if(config.triggers){
+            config.triggers.forEach(trigger => {
+                triggerMap.set(trigger.trigger, trigger);
+            });
+        }
+
+        // Convert map back to array
+        const allTriggers = Array.from(triggerMap.values());
         this.logger.debug("All Triggers: ", allTriggers);
         
         const cognito = new AuthConstruct({	
