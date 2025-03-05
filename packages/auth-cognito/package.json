@@ -1,14 +1,14 @@
 {
   "name": "@ten24group/fw24-auth-cognito",
-  "version": "0.1.1-beta.1",
-  "description": "Cognito auth module for fw24",
+  "version": "1.0.0",
+  "description": "Authentication module for FW24 using Amazon Cognito",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "watch": "tsc -w",
-    "release": "npm run build && standard-version --prerelease beta && git push --follow-tags && npm publish"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "repository": {
     "type": "git",
@@ -32,17 +32,33 @@
   },
   "homepage": "https://github.com/ten24group/fw24-modules#readme",
   "devDependencies": {
-    "@ten24group/fw24": "file:../../../fw24",
-    "@types/node": "^20.12.7",
+    "@jest/globals": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^18.0.0",
+    "aws-sdk-client-mock": "^3.0.0",
+    "aws-sdk-client-mock-jest": "^3.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "ts-node": "^10.9.0",
     "standard-version": "^9.5.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.0.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
-    "aws-jwt-verify": "^4.0.1"
+    "@aws-sdk/client-cloudwatch-logs": "^3.0.0",
+    "aws-jwt-verify": "^4.0.0",
+    "@ten24group/fw24": "file:../../../fw24"
   },
   "peerDependencies": {
     "@ten24group/fw24": "file:../../../fw24"
+  },
+  "resolutions": {
+    "@smithy/types": "^2.0.0",
+    "@smithy/smithy-client": "^2.0.0"
+  },
+  "overrides": {
+    "@smithy/types": "^2.0.0",
+    "@smithy/smithy-client": "^2.0.0"
   }
 }
