@@ -52,20 +52,38 @@ export class AuthModule extends AbstractFw24Module {
         }
         this.logger.debug("AuthModule: ", config);
 
-        const allTriggers = [ ...(config.triggers ?? []) ];
-        if (config.customMessageTemplates) {
-            allTriggers.push(
-                this.makeCustomMessageHandlerTrigger(config.customMessageTemplates)!
-            );
+        // if autoVerifyUser is true, make sure user is automatically verified
+        if(config.autoVerifyUser){
+            const preSignupTrigger = {
+                trigger: 'PRE_SIGN_UP' as const,
+                functionProps: {
+                    entry: join(__dirname, 'functions/pre-signup-autoverify.js'),
+                    policies: []
+                }
+            }
+            config.triggers?.push(preSignupTrigger);
         }
 
-        const cognito = new AuthConstruct({
+        // Combine all triggers
+        const allTriggers = [
+            ...(config.triggers ?? []),
+        ];
+
+        if(config.customMessageTemplates){
+            const customMessageTrigger = this.makeCustomMessageHandlerTrigger(config.customMessageTemplates);
+            if (customMessageTrigger) {
+                allTriggers.push(customMessageTrigger);
+            }
+        }
+
+        this.logger.debug("All Triggers: ", allTriggers);
+        
+        const cognito = new AuthConstruct({	
             ...config,
             triggers: allTriggers,
         });
 
-        this.constructs.set('auth-cognito', cognito);
-
+        this.constructs.set('auth-cognito', cognito );
     }
 
     makeCustomMessageHandlerTrigger(customMessageTemplates: IAuthModuleConfig[ 'customMessageTemplates' ]): ArrayElement<IAuthModuleConfig[ 'triggers' ]> | undefined {

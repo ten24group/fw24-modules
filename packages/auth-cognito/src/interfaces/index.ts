@@ -1,10 +1,23 @@
-import type { AuthenticationResultType, ChallengeNameType, UserType } from "@aws-sdk/client-cognito-identity-provider";
+import type { AuthenticationResultType, ChallengeNameType, EmailMfaSettingsType } from "@aws-sdk/client-cognito-identity-provider";
 import type { IAuthConstructConfig } from "@ten24group/fw24";
 
 
 export type SignInResult = AuthenticationResultType | {
+    session: string,
     challengeName: ChallengeNameType,
     challengeParameters?: Record<string, string>,
+}
+
+export type InitiateAuthResult = {
+    session: string,
+    challenges: ChallengeNameType[],
+}
+
+export type SignUpOptions = {
+    username: string;
+    password: string;
+    email?: string;  // Optional email
+    attributes?: Array<{Name: string, Value: string}>;
 }
 
 export type CreateUserOptions = {
@@ -18,17 +31,44 @@ export type UpdateUserAttributeOptions = {
     attributes: Array<{ Name: string, Value: string }>
 }
 
+export type MfaMethod = 'EMAIL' | 'SMS' | 'SOFTWARE_TOKEN';
+
+export type UserMfaPreferenceOptions = {
+    enabledMethods: MfaMethod[];
+    preferredMethod?: MfaMethod;
+}
+
+export type AdminMfaSettings = {
+    username: string;
+    enabledMethods: MfaMethod[];
+    preferredMethod?: MfaMethod;
+}
+
 export interface IAuthService {
-    signup(username: string, password: string): Promise<void>;
+    signup(options: SignUpOptions): Promise<void>;
     signin(username: string, password: string): Promise<SignInResult>;
     signout(accessToken: string): Promise<void>;
     verify(username: string, code: string): Promise<void>;
+    verifyUserAttribute(accessToken: string, attributeName: string, code: string): Promise<void>;
+    getUserAttributeVerificationCode(accessToken: string, attributeName: string): Promise<void>;
+    resendVerificationCode(username: string): Promise<void>;
     getCredentials(idToken: string): Promise<any>;
     changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void>;
     forgotPassword(username: string): Promise<void>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
+    getLoginOptions(username: string): Promise<InitiateAuthResult>;
+    initiateOtpAuth(username: string, session: string): Promise<SignInResult>;
+    respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult>;
+    refreshToken(refreshToken: string): Promise<SignInResult>;
 
-    getUserByUserSub(userSub: string): Promise<UserType | undefined>;
+    // Social sign-in methods
+    initiateSocialSignIn(provider: SocialProvider, redirectUri: string): Promise<string>;
+    completeSocialSignIn(provider: SocialProvider, code: string, redirectUri: string): Promise<SocialSignInResult>;
+    linkSocialProvider(accessToken: string, provider: SocialProvider, code: string, redirectUri: string): Promise<void>;
+    unlinkSocialProvider(accessToken: string, provider: SocialProvider): Promise<void>;
+
+    // User methods
+    updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void>;
 
     // Admin methods
     createUser(options: CreateUserOptions): Promise<void>;
@@ -39,6 +79,8 @@ export interface IAuthService {
     addUserToGroup(username: string, groupName: string): Promise<void>;
     getUserGroupNames(username: string): Promise<Array<string>>;
     removeUserFromGroup(username: string, groupName: string): Promise<void>;
+    setUserMfaSettings(settings: AdminMfaSettings): Promise<void>;
+    getSocialSignInConfig(redirectUri: string): Promise<SocialSignInConfigs>;
 }
 
 export type CreateUserAuthenticationOptions = {
@@ -82,8 +124,6 @@ export type ResetUserPasswordOptions = {
 export interface IAuthModuleClient {
     createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
 
-    getUserByUserSub(UserSub: string): Promise<UserType | undefined>;
-
     addUserToGroup(options: AddUserToGroupOptions): Promise<void>;
 
     setUserGroups(options: SetUserGroupsOptions): Promise<void>;
@@ -124,4 +164,23 @@ export interface IAuthModuleConfig extends IAuthConstructConfig {
             message: string,
         },
     }
+    autoVerifyUser?: boolean
+}
+
+export type SocialProvider = 'Google' | 'Facebook';
+
+export type SocialSignInConfig = {
+    authorizationUrl: string;
+    clientId: string;
+    redirectUri: string;
+    grantType: string;
+}
+
+export type SocialSignInConfigs = {
+    [key in SocialProvider]?: SocialSignInConfig;
+}
+
+export type SocialSignInResult = SignInResult & {
+    isNewUser?: boolean;
+    provider?: SocialProvider;
 }
