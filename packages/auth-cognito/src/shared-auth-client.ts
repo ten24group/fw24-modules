@@ -1,6 +1,6 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
-import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UserDetails } from "./interfaces";
+import { AddUserToGroupOptions, CreateUserAuthenticationOptions, CreateUserOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UserDetails } from "./interfaces";
 
 export class SharedAuthClient implements IAuthModuleClient {
 
@@ -65,6 +65,10 @@ export class SharedAuthClient implements IAuthModuleClient {
 
             return result;
         }
+    }
+
+    async createUser(options: CreateUserOptions): Promise<void> {
+        await this.authService.createUser(options);
     }
 
     async addUserToGroup(options: AddUserToGroupOptions): Promise<void> {

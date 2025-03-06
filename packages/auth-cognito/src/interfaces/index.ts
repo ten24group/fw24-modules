@@ -135,6 +135,7 @@ export type ResetUserPasswordOptions = {
 
 export interface IAuthModuleClient {
     createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
+    createUser(options: CreateUserOptions): Promise<void>;
 
     getUser(usernameOrEmail: string): Promise<UserDetails>;
 
