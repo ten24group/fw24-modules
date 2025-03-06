@@ -1,6 +1,7 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
 import { AddUserToGroupOptions, CreateUserAuthenticationOptions, CreateUserOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UserDetails } from "./interfaces";
+import { DecodedIdToken } from "./interfaces";
 
 export class SharedAuthClient implements IAuthModuleClient {
 
@@ -91,6 +92,10 @@ export class SharedAuthClient implements IAuthModuleClient {
 
     async resetUserPassword(options: ResetUserPasswordOptions): Promise<void> {
         return await this.authService.resetPassword(options.username);
+    };
+
+    async verifyIdToken(idToken: string): Promise<DecodedIdToken> {
+        return await this.authService.verifyIdToken(idToken);
     };
 
 }

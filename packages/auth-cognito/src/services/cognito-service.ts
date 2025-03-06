@@ -1,47 +1,8 @@
 import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { resolveEnvValueFor } from "@ten24group/fw24";
-
-/**
- * Interface representing a decoded Cognito ID token.
- * 
- * Example decoded payload:
- * ```json
- * {
- *   "sub": "12345678-1234-1234-1234-123456789012",  // Unique identifier for the user
- *   "email_verified": true,
- *   "iss": "https://cognito-idp.region.amazonaws.com/userPoolId",  // Token issuer
- *   "phone_number_verified": false,
- *   "cognito:username": "johndoe",
- *   "aud": "clientId",  // Your app's client ID
- *   "event_id": "12345678-1234-1234-1234-123456789012",
- *   "token_use": "id",
- *   "auth_time": 1678901234,
- *   "exp": 1678904834,  // Token expiration timestamp
- *   "iat": 1678901234,  // Token issued at timestamp
- *   "email": "john.doe@example.com",
- *   "custom:company": "Acme Corp",  // Custom attribute
- *   "custom:role": "admin",         // Custom attribute
- *   "custom:userId": "user123"      // Custom attribute
- * }
- * ```
- */
-export interface DecodedIdToken {
-    sub: string;  // The unique identifier for the user
-    email_verified: boolean;
-    iss: string;  // The issuer of the token
-    phone_number_verified: boolean;
-    'cognito:username': string;  // Cognito username
-    aud: string;  // The audience (client ID)
-    event_id: string;
-    token_use: string;
-    auth_time: number;
-    exp: number;  // Token expiration time
-    iat: number;  // Token issued at time
-    [key: string]: any;  // Allow for custom claims
-}
 
 export class CognitoService implements IAuthService {
 
