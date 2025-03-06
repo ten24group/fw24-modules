@@ -2,13 +2,13 @@ import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, Conf
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import { CreateUserOptions, IAuthService, SignInResult, UpdateUserAttributeOptions } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
-import { resolveEnvValueFor } from "@ten24group/fw24";
+import { createLogger, resolveEnvValueFor } from "@ten24group/fw24";
 
 export class CognitoService implements IAuthService {
+    private readonly logger = createLogger(CognitoService);
 
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
-
 
     // Event object is the event passed to Lambda
     async getUserByUserSub(userSub: string) {
@@ -24,8 +24,9 @@ export class CognitoService implements IAuthService {
         return user;
     }
 
-
     async signup(username: string, password: string): Promise<void> {
+        this.logger.info(`Signing-up user: ${username}`);
+
         const userPoolClientId = this.getUserPoolClientId();
 
         const userAttributes = [
@@ -46,6 +47,7 @@ export class CognitoService implements IAuthService {
     }
 
     async signin(username: string, password: string): Promise<SignInResult> {
+        this.logger.info(`Signing-in user: ${username}`);
         const userPoolClientId = this.getUserPoolClientId();
 
         const result = await this.identityProviderClient.send(
@@ -70,6 +72,7 @@ export class CognitoService implements IAuthService {
     }
 
     async signout(accessToken: string): Promise<void> {
+        this.logger.info(`Signing-out user`);
         await this.identityProviderClient.send(
             new GlobalSignOutCommand({
                 AccessToken: accessToken,
@@ -78,6 +81,7 @@ export class CognitoService implements IAuthService {
     }
 
     async verify(username: string, code: string): Promise<void> {
+        this.logger.info(`Verifying user: ${username}`);
         const userPoolClientId = this.getUserPoolClientId();
 
         await this.identityProviderClient.send(
@@ -90,6 +94,7 @@ export class CognitoService implements IAuthService {
     }
 
     async changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void> {
+        this.logger.info(`Changing password for user: ${accessToken}`);
         await this.identityProviderClient.send(
             new ChangePasswordCommand({
                 AccessToken: accessToken,
@@ -100,6 +105,7 @@ export class CognitoService implements IAuthService {
     }
 
     async createUser(options: CreateUserOptions) {
+        this.logger.info(`Creating user: ${options.username}`);
         const { username, tempPassword, attributes = [] } = options;
 
         await this.identityProviderClient.send(
@@ -115,6 +121,7 @@ export class CognitoService implements IAuthService {
     }
 
     async setPassword(username: string, password: string, forceChangePassword = true) {
+        this.logger.info(`Setting password for user: ${username}`, { forceChangePassword });
         await this.identityProviderClient.send(
             new AdminSetUserPasswordCommand({
                 Username: username,
@@ -126,6 +133,7 @@ export class CognitoService implements IAuthService {
     }
 
     async resetPassword(username: string) {
+        this.logger.info(`Resetting password for user: ${username}`);
         await this.identityProviderClient.send(
             new AdminResetUserPasswordCommand({
                 Username: username,
@@ -136,6 +144,7 @@ export class CognitoService implements IAuthService {
 
 
     async forgotPassword(username: string): Promise<void> {
+        this.logger.info(`Triggering Forgot-Password flow for user: ${username}`);
         await this.identityProviderClient.send(
             new ForgotPasswordCommand({
                 ClientId: this.getUserPoolClientId(),
@@ -145,6 +154,7 @@ export class CognitoService implements IAuthService {
     }
 
     async confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void> {
+        this.logger.info(`Confirming Forgot-Password flow for user: ${username}`);
         await this.identityProviderClient.send(
             new ConfirmForgotPasswordCommand({
                 ClientId: this.getUserPoolClientId(),
@@ -156,6 +166,7 @@ export class CognitoService implements IAuthService {
     }
 
     async addUserToGroup(username: string, groupName: string): Promise<void> {
+        this.logger.info(`Adding user to group: ${groupName} for user: ${username}`);
         await this.identityProviderClient.send(
             new AdminAddUserToGroupCommand({
                 UserPoolId: this.getUserPoolID(),
@@ -166,6 +177,7 @@ export class CognitoService implements IAuthService {
     }
 
     async removeUserFromGroup(username: string, groupName: string): Promise<void> {
+        this.logger.info(`Removing user from group: ${groupName} for user: ${username}`);
         await this.identityProviderClient.send(
             new AdminRemoveUserFromGroupCommand({
                 UserPoolId: this.getUserPoolID(),
@@ -176,7 +188,7 @@ export class CognitoService implements IAuthService {
     }
 
     async getUserGroupNames(username: string): Promise<Array<string>> {
-
+        this.logger.info(`Getting group names for user: ${username}`);
         //! NOTE: if there are a lot of groups this function will only return first 20
         const groupsList = await this.identityProviderClient.send(
             new AdminListGroupsForUserCommand({
@@ -190,6 +202,7 @@ export class CognitoService implements IAuthService {
     }
 
     async setUserGroups(username: string, newGroups: string[]): Promise<void> {
+        this.logger.info(`Setting groups for user: ${username}`);
         const existingUserGroups = await this.getUserGroupNames(username);
 
         const promises = [];
@@ -212,6 +225,7 @@ export class CognitoService implements IAuthService {
     }
 
     async updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void> {
+        this.logger.info(`Updating user attributes for user: ${options.username}`);
         const { username, attributes } = options;
 
         await this.identityProviderClient.send(
@@ -225,6 +239,7 @@ export class CognitoService implements IAuthService {
     }
 
     async getCredentials(idToken: string): Promise<any> {
+        this.logger.info(`Getting credentials for user`);
         // validate the token
         const jwtVerifier = CognitoJwtVerifier.create({
             userPoolId: this.getUserPoolID(),

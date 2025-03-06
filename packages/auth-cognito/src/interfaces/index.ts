@@ -54,6 +54,11 @@ export type CreateUserAuthenticationOptions = {
     autoTriggerForgotPassword?: boolean;
 }
 
+export type SigninUserOptions = {
+    username: string,
+    password: string,
+}
+
 export type AddUserToGroupOptions = {
     group: string,
     username: string,
@@ -82,10 +87,12 @@ export type ResetUserPasswordOptions = {
 export interface IAuthModuleClient {
     createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
 
+    signinUser(options: SigninUserOptions): Promise<SignInResult>;
+    updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void>;
+
     getUserByUserSub(UserSub: string): Promise<UserType | undefined>;
 
     addUserToGroup(options: AddUserToGroupOptions): Promise<void>;
-
     setUserGroups(options: SetUserGroupsOptions): Promise<void>;
 
     setUserPassword(options: SetUserPasswordOptions): Promise<void>;

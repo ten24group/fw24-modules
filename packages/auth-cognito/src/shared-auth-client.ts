@@ -1,6 +1,6 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
-import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult } from "./interfaces";
+import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, SigninUserOptions, UpdateUserAttributeOptions } from "./interfaces";
 import { UserType } from "@aws-sdk/client-cognito-identity-provider";
 
 export class SharedAuthClient implements IAuthModuleClient {
@@ -13,6 +13,17 @@ export class SharedAuthClient implements IAuthModuleClient {
 
     async getUserByUserSub(userSub: string): Promise<UserType | undefined> {
         return this.authService.getUserByUserSub(userSub)
+    }
+
+    async signinUser(options: SigninUserOptions): Promise<SignInResult> {
+        const { username, password } = options;
+
+        const result = await this.authService.signin(username, password);
+        return result;
+    }
+
+    async updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void> {
+        await this.authService.updateUserAttributes(options);
     }
 
     async createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult> {
@@ -45,20 +56,21 @@ export class SharedAuthClient implements IAuthModuleClient {
             })
         }
 
-        // trigger forgot-password flow, so the user will get an email to reset the password
-        if (autoTriggerForgotPassword) {
-            // this is required else user is stuck in the confirmed status, and we can't initiate the forgot-password flow
-            await this.authService.setPassword(
-                username,
-                password,
-                false
-            )
-
-            await this.authService.forgotPassword(username);
-        }
-
         // add user groups
         await this.authService.setUserGroups(username, groups);
+
+        // this is required else user is stuck in the confirmed status, and we can't initiate the forgot-password flow
+        await this.authService.setPassword(
+            username,
+            password,
+            false
+        )
+
+        // trigger forgot-password flow, so the user will get an email to reset the password
+        if (autoTriggerForgotPassword) {
+            this.logger.info(`Triggering Forgot-Password flow for user: ${username}`);
+            await this.authService.forgotPassword(username);
+        }
 
         // login
         if (autoLogin) {
@@ -74,7 +86,6 @@ export class SharedAuthClient implements IAuthModuleClient {
 
     async setUserGroups(options: SetUserGroupsOptions): Promise<void> {
         const { username, groups = [] } = options;
-
         await this.authService.setUserGroups(username, groups);
     }
 
