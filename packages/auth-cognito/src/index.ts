@@ -1,11 +1,11 @@
 import { join } from 'path';
 import { AbstractFw24Module, AuthConstruct, createLogger, DIModule, FW24Construct, ILogger, LambdaFunctionProps, type ArrayElement } from '@ten24group/fw24';
-import { UserPoolOperation } from 'aws-cdk-lib/aws-cognito';
 import { TriggerType } from '@ten24group/fw24';
 import { AuthModuleClientDIToken, AuthModulePolicy_AllowCreateUserAuth, AuthServiceDIToken, CUSTOM_MESSAGE_ADMIN_CREATE_USER, CUSTOM_MESSAGE_AUTHENTICATE, CUSTOM_MESSAGE_FORGOT_PASSWORD, CUSTOM_MESSAGE_RESEND_CODE, CUSTOM_MESSAGE_SIGN_UP, CUSTOM_MESSAGE_UPDATE_USER_ATTRIBUTE, CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE, CUSTOM_SUBJECT_ADMIN_CREATE_USER, CUSTOM_SUBJECT_AUTHENTICATE, CUSTOM_SUBJECT_FORGOT_PASSWORD, CUSTOM_SUBJECT_RESEND_CODE, CUSTOM_SUBJECT_SIGN_UP, CUSTOM_SUBJECT_UPDATE_USER_ATTRIBUTE, CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE } from './const';
 import { IAuthModuleConfig } from './interfaces';
 import { CognitoService } from './services/cognito-service';
 import { SharedAuthClient } from './shared-auth-client';
+import { type UserPoolOperation } from 'aws-cdk-lib/aws-cognito';
 
 export * from './interfaces'
 
