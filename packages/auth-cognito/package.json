@@ -1,11 +1,14 @@
 {
   "name": "@ten24group/fw24-auth-cognito",
-  "version": "1.0.0",
-  "description": "Authentication module for FW24 using Amazon Cognito",
+  "version": "0.1.1-beta.3",
+  "description": "Cognito auth module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "watch": "tsc -w",
+    "release": "npm run build && standard-version --prerelease beta && git push --follow-tags && npm publish",
+    "release:BE": "npm run build && standard-version --prerelease beta && git push --follow-tags && npm publish --tag bleeding-edge",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -35,20 +38,21 @@
     "@jest/globals": "^29.0.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^18.0.0",
+    "aws-cdk-lib": "^2.182.0",
     "aws-sdk-client-mock": "^3.0.0",
     "aws-sdk-client-mock-jest": "^3.0.0",
     "jest": "^29.0.0",
+    "standard-version": "^9.5.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.9.0",
-    "standard-version": "^9.5.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.0.0",
     "@aws-sdk/client-cognito-identity": "^3.0.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
-    "@aws-sdk/client-cloudwatch-logs": "^3.0.0",
-    "aws-jwt-verify": "^4.0.0",
-    "@ten24group/fw24": "file:../../../fw24"
+    "@ten24group/fw24": "file:../../../fw24",
+    "aws-jwt-verify": "^4.0.0"
   },
   "peerDependencies": {
     "@ten24group/fw24": "file:../../../fw24"

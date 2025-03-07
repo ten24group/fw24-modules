@@ -1,26 +1,26 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { resolveEnvValueFor } from "@ten24group/fw24";
 
 export class CognitoService implements IAuthService {
-    
+
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
 
-    async signup(options: SignUpOptions): Promise<void> {
-        const { username, password, email, attributes = [] } = options;
+    async signup(options: SignUpOptions): Promise<SignInResult | void> {
+        const { username, password, email, autoSignIn = false } = options;
         const userPoolClientId = this.getUserPoolClientId();
 
         if (!userPoolClientId) {
             throw new Error('User pool client ID is not configured');
         }
 
-        // Build user attributes array
-        const userAttributes = [...attributes];
+        // Build user attributes array with only standard Cognito attributes
+        const userAttributes: Array<{ Name: string, Value: string }> = [];
         
-        // If email is provided, always add it as an attribute
+        // Add standard Cognito attributes
         if (email) {
             userAttributes.push({
                 Name: 'email',
@@ -35,14 +35,29 @@ export class CognitoService implements IAuthService {
             });
         }
 
+        // Convert all custom attributes to clientMetadata format
+        const clientMetadata: { [key: string]: string } = {};
+        Object.entries(options).forEach(([key, value]) => {
+            // Skip reserved properties and standard Cognito attributes
+            if (!['username', 'password', 'confirmPassword', 'email', 'autoSignIn'].includes(key)) {
+                clientMetadata[key] = String(value);
+            }
+        });
+
         await this.identityProviderClient.send(
             new SignUpCommand({
                 ClientId: userPoolClientId,
                 Username: username,
                 Password: password,
                 UserAttributes: userAttributes,
+                ClientMetadata: clientMetadata
             })
         );
+
+        // If autoSignIn is true, attempt to sign in immediately after signup
+        if (autoSignIn) {
+            return this.signin(username, password);
+        }
     }
 
     // Helper method to validate email format
@@ -65,7 +80,7 @@ export class CognitoService implements IAuthService {
             })
         );
 
-        if(result.ChallengeName){
+        if (result.ChallengeName) {
             return {
                 session: result.Session ?? '',
                 challengeName: result.ChallengeName,
@@ -244,20 +259,20 @@ export class CognitoService implements IAuthService {
 
     async createUser(options: CreateUserOptions) {
         const { username, tempPassword, attributes = [] } = options;
-        
+
         await this.identityProviderClient.send(
             new AdminCreateUserCommand({
                 Username: username,
                 UserPoolId: this.getUserPoolID(),
                 TemporaryPassword: tempPassword,
-                DesiredDeliveryMediums: [DeliveryMediumType.EMAIL],
+                DesiredDeliveryMediums: [ DeliveryMediumType.EMAIL ],
                 MessageAction: "SUPPRESS",
                 UserAttributes: attributes,
             })
         );
     }
 
-    async setPassword(username: string, password: string, forceChangePassword=true ){
+    async setPassword(username: string, password: string, forceChangePassword = true) {
         await this.identityProviderClient.send(
             new AdminSetUserPasswordCommand({
                 Username: username,
@@ -268,7 +283,7 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async resetPassword(username: string){
+    async resetPassword(username: string) {
         await this.identityProviderClient.send(
             new AdminResetUserPasswordCommand({
                 Username: username,
@@ -319,7 +334,7 @@ export class CognitoService implements IAuthService {
     }
 
     async getUserGroupNames(username: string): Promise<Array<string>> {
-        
+
         //! NOTE: if there are a lot of groups this function will only return first 20
         const groupsList = await this.identityProviderClient.send(
             new AdminListGroupsForUserCommand({
@@ -329,7 +344,7 @@ export class CognitoService implements IAuthService {
             })
         );
 
-        return groupsList.Groups?.map( g => g.GroupName ?? '' ) ?? [];
+        return groupsList.Groups?.map(g => g.GroupName ?? '') ?? [];
     }
 
     async setUserGroups(username: string, newGroups: string[]): Promise<void> {
@@ -338,15 +353,15 @@ export class CognitoService implements IAuthService {
         const promises = [];
 
         // collect only the new groups to be added
-        for(const group of newGroups){
-            if(!existingUserGroups.includes(group)){
+        for (const group of newGroups) {
+            if (!existingUserGroups.includes(group)) {
                 promises.push(this.addUserToGroup(username, group))
             }
         }
 
         // collect any existing-groups which are not part of new-groups for removal
-        for(const group of existingUserGroups){
-            if(!newGroups.includes(group)){
+        for (const group of existingUserGroups) {
+            if (!newGroups.includes(group)) {
                 promises.push(this.removeUserFromGroup(username, group))
             }
         }
@@ -354,7 +369,7 @@ export class CognitoService implements IAuthService {
         await Promise.all(promises);
     }
 
-    async updateUserAttributes( options: UpdateUserAttributeOptions): Promise<void> {
+    async updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void> {
         const { username, attributes } = options;
 
         await this.identityProviderClient.send(
@@ -412,6 +427,24 @@ export class CognitoService implements IAuthService {
         );
     }
 
+    async verifyIdToken(idToken: string): Promise<DecodedIdToken> {
+        const jwtVerifier = CognitoJwtVerifier.create({
+            userPoolId: this.getUserPoolID(),
+            clientId: this.getUserPoolClientId(),
+            tokenUse: "id",
+        });
+
+        try {
+            const payload = await jwtVerifier.verify(idToken);
+            return payload as unknown as DecodedIdToken;
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                throw new Error(`Invalid ID-Token: ${error.message}`);
+            }
+            throw new Error('Invalid ID-Token: Unknown error');
+        }
+    }
+
     async getCredentials(idToken: string): Promise<any> {
         // validate the token
         const jwtVerifier = CognitoJwtVerifier.create({
@@ -431,7 +464,7 @@ export class CognitoService implements IAuthService {
         const identityInput = {
             IdentityPoolId: identityPoolId,
             Logins: {
-                [providerName]: idToken,
+                [ providerName ]: idToken,
             },
         };
 
@@ -442,7 +475,7 @@ export class CognitoService implements IAuthService {
         const credentialInput = {
             IdentityId: identityID,
             Logins: {
-                [providerName]: idToken,
+                [ providerName ]: idToken,
             },
         };
 
@@ -676,5 +709,58 @@ export class CognitoService implements IAuthService {
 
     private getAuthDomain(): string {
         return resolveEnvValueFor({key: 'authDomain'}) || '';
+    }
+
+    async getUser(usernameOrEmail: string): Promise<UserDetails> {
+        const userPoolId = this.getUserPoolID();
+        
+        // First try to get user directly by username
+        try {
+            const result = await this.identityProviderClient.send(
+                new AdminGetUserCommand({
+                    UserPoolId: userPoolId,
+                    Username: usernameOrEmail,
+                })
+            );
+
+            return {
+                username: result.Username!,
+                email: result.UserAttributes?.find(attr => attr.Name === 'email')?.Value,
+                enabled: result.Enabled,
+                userStatus: result.UserStatus,
+                attributes: result.UserAttributes?.map(attr => ({
+                    Name: attr.Name || '',
+                    Value: attr.Value || ''
+                })),
+            };
+        } catch (error: any) {
+            // If not found by username and input looks like email, try searching by email
+            if (error.name === 'UserNotFoundException' && this.isValidEmail(usernameOrEmail)) {
+                const result = await this.identityProviderClient.send(
+                    new ListUsersCommand({
+                        UserPoolId: userPoolId,
+                        Filter: `email = "${usernameOrEmail}"`,
+                        Limit: 1,
+                    })
+                );
+
+                if (!result.Users || result.Users.length === 0) {
+                    throw new Error('User not found');
+                }
+
+                const user = result.Users[0];
+                return {
+                    username: user.Username!,
+                    email: user.Attributes?.find(attr => attr.Name === 'email')?.Value,
+                    enabled: user.Enabled,
+                    userStatus: user.UserStatus,
+                    attributes: user.Attributes?.map(attr => ({
+                        Name: attr.Name || '',
+                        Value: attr.Value || ''
+                    })),
+                };
+            }
+            throw error;
+        }
     }
 }

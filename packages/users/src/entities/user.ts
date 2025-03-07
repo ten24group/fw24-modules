@@ -13,8 +13,8 @@ import {
 export const createUserSchema = () => createEntitySchema({
 	model: {
 		version: '1',
-		entity: 'User',
-		entityNamePlural: 'Users',
+		entity: 'user',
+		entityNamePlural: 'users',
 		entityOperations: DefaultEntityOperations,
 		service: 'users' // electro DB service name [logical group of entities]
 	},
@@ -40,10 +40,11 @@ export const createUserSchema = () => createEntitySchema({
 			type: 'string',
 			required: true,
 		},
-		group: {
-			type: 'string',
+		groups: {
+			type: 'list',
+			items: { type: 'string' },
 			required: true,
-			fieldType: 'select',
+			fieldType: 'multi-select',
 			options: {
 				apiMethod: 'GET',
 				apiUrl: '/user/new-user-group-options',

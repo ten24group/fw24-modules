@@ -17,18 +17,19 @@ export type SignUpOptions = {
     username: string;
     password: string;
     email?: string;  // Optional email
-    attributes?: Array<{Name: string, Value: string}>;
+    autoSignIn?: boolean;  // Optional parameter to automatically sign in after signup
+    [key: string]: any;  // Allow arbitrary string properties
 }
 
 export type CreateUserOptions = {
-    username: string, 
-    tempPassword: string, 
-    attributes?: Array<{Name: string, Value: string}>
+    username: string,
+    tempPassword: string,
+    attributes?: Array<{ Name: string, Value: string }>
 }
 
 export type UpdateUserAttributeOptions = {
-    username: string, 
-    attributes: Array<{Name: string, Value: string}>
+    username: string,
+    attributes: Array<{ Name: string, Value: string }>
 }
 
 export type MfaMethod = 'EMAIL' | 'SMS' | 'SOFTWARE_TOKEN';
@@ -44,8 +45,57 @@ export type AdminMfaSettings = {
     preferredMethod?: MfaMethod;
 }
 
+export type UserDetails = {
+    username: string;
+    email?: string;
+    enabled?: boolean;
+    userStatus?: string;
+    attributes?: Array<{ Name: string, Value: string }>;
+}
+
+/**
+ * Interface representing a decoded Cognito ID token.
+ * 
+ * Example decoded payload:
+ * ```json
+ * {
+ *   "sub": "12345678-1234-1234-1234-123456789012",  // Unique identifier for the user
+ *   "email_verified": true,
+ *   "iss": "https://cognito-idp.region.amazonaws.com/userPoolId",  // Token issuer
+ *   "phone_number_verified": false,
+ *   "cognito:username": "johndoe",
+ *   "aud": "clientId",  // Your app's client ID
+ *   "event_id": "12345678-1234-1234-1234-123456789012",
+ *   "token_use": "id",
+ *   "auth_time": 1678901234,
+ *   "exp": 1678904834,  // Token expiration timestamp
+ *   "iat": 1678901234,  // Token issued at timestamp
+ *   "email": "john.doe@example.com",
+ *   "custom:company": "Acme Corp",  // Custom attribute
+ *   "custom:role": "admin",         // Custom attribute
+ *   "custom:userId": "user123"      // Custom attribute
+ * }
+ * ```
+ */
+export interface DecodedIdToken {
+    sub: string;  // The unique identifier for the user
+    email_verified: boolean;
+    iss: string;  // The issuer of the token
+    phone_number_verified: boolean;
+    'cognito:username': string;  // Cognito username
+    aud: string;  // The audience (client ID)
+    event_id: string;
+    token_use: string;
+    auth_time: number;
+    exp: number;  // Token expiration time
+    iat: number;  // Token issued at time
+    [key: string]: any;  // Allow for custom claims
+}
+
+
 export interface IAuthService {
-    signup(options: SignUpOptions): Promise<void>;
+    getUser(usernameOrEmail: string): Promise<UserDetails>;
+    signup(options: SignUpOptions): Promise<SignInResult | void>;
     signin(username: string, password: string): Promise<SignInResult>;
     signout(accessToken: string): Promise<void>;
     verify(username: string, code: string): Promise<void>;
@@ -53,6 +103,7 @@ export interface IAuthService {
     getUserAttributeVerificationCode(accessToken: string, attributeName: string): Promise<void>;
     resendVerificationCode(username: string): Promise<void>;
     getCredentials(idToken: string): Promise<any>;
+    verifyIdToken(idToken: string): Promise<DecodedIdToken>;
     changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void>;
     forgotPassword(username: string): Promise<void>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
@@ -83,30 +134,37 @@ export interface IAuthService {
     getSocialSignInConfig(redirectUri: string): Promise<SocialSignInConfigs>;
 }
 
-export type CreateUserAuthenticationOptions = { 
-    username: string, 
-    password: string, 
+export type CreateUserAuthenticationOptions = {
+    username: string,
+    password: string,
     groups?: string[],
+    userAttributes?: Array<{
+        Name: string,
+        Value: string,
+    }>;
+    autoLogin?: boolean;
+    autoVerifyEmail?: boolean;
+    autoTriggerForgotPassword?: boolean;
 }
 
 export type AddUserToGroupOptions = {
     group: string,
-    username: string, 
+    username: string,
 }
 
 export type RemoveUserFromGroupOptions = {
     group: string,
-    username: string, 
+    username: string,
 }
 
 export type SetUserGroupsOptions = {
     groups?: string[],
-    username: string, 
+    username: string,
 }
 
 export type SetUserPasswordOptions = {
-    username: string, 
-    password: string, 
+    username: string,
+    password: string,
     forceChangePassword?: boolean
 }
 
@@ -115,14 +173,18 @@ export type ResetUserPasswordOptions = {
 }
 
 export interface IAuthModuleClient {
-    createUserAuth(options: CreateUserAuthenticationOptions): Promise<void>;
+    createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
+    createUser(options: CreateUserOptions): Promise<void>;
 
-    addUserToGroup( options: AddUserToGroupOptions): Promise<void>;
-    
-    setUserGroups( options: SetUserGroupsOptions): Promise<void>;
+    getUser(usernameOrEmail: string): Promise<UserDetails>;
+
+    addUserToGroup(options: AddUserToGroupOptions): Promise<void>;
+
+    setUserGroups(options: SetUserGroupsOptions): Promise<void>;
 
     setUserPassword(options: SetUserPasswordOptions): Promise<void>;
     resetUserPassword(options: ResetUserPasswordOptions): Promise<void>;
+    verifyIdToken(idToken: string): Promise<DecodedIdToken>;
 
 }
 

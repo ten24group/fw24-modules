@@ -1,5 +1,5 @@
 import { AuthModule } from './../index';
-import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject  } from '@ten24group/fw24';
+import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject } from '@ten24group/fw24';
 
 import { IAuthService, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider } from '../interfaces';
 import { AuthServiceDIToken } from '../const';
@@ -8,6 +8,8 @@ type SignUpRequest = {
     username?: string;
     password: string;
     email?: string;
+    autoSignIn?: boolean;
+    [key: string]: any;  // Allow arbitrary attributes
 }
 
 type SignInRequest = {
@@ -42,9 +44,9 @@ const signInValidations: InputValidationRule<SignInRequest> = {
 } as const;
 
 @Controller('mauth', {
-    authorizer: [{
+    authorizer: [ {
         name: 'authmodule', type: 'NONE'
-    }],
+    } ],
     env: [
         { name: 'userPoolID', prefix: 'userpool_authmodule' },
         { name: 'userPoolClientID', prefix: 'userpoolclient_authmodule' },
@@ -58,15 +60,15 @@ const signInValidations: InputValidationRule<SignInRequest> = {
 })
 export class AuthController extends APIController {
 
-	constructor(
-		@Inject(AuthServiceDIToken) private readonly authService: IAuthService
-	) {
-		super();
+    constructor(
+        @Inject(AuthServiceDIToken) private readonly authService: IAuthService
+    ) {
+        super();
     }
-	
-	async initialize() {
-		return Promise.resolve();
-	}
+
+    async initialize() {
+        return Promise.resolve();
+    }
 
     /**
      * Sign up a new user with either username or email
@@ -114,27 +116,38 @@ export class AuthController extends APIController {
      */
     @Post('/signup', { validations: signUpValidations })
     async signup(req: Request, res: Response) {
-        const { username, password, email } = req.body as SignUpRequest;
+        try {
+            const { username, password, email, autoSignIn = false, ...customAttributes } = req.body as SignUpRequest;
 
-        // Validate that at least one identifier is provided
-        if (!username && !email) {
+            if (!username && !email) {
+                return res.status(400).json({
+                    message: 'Either username or email must be provided'
+                });
+            }
+
+            const signupUsername = username || email;
+
+            // Pass all attributes directly to the signup method
+            const result = await this.authService.signup({
+                username: signupUsername as string,  // We know it's not undefined due to the check above
+                password,
+                email,
+                autoSignIn,
+                ...customAttributes
+            });
+
+            if (autoSignIn && result) {
+                return res.json(result);
+            }
+
+            return res.json({
+                message: 'User registered successfully'
+            });
+        } catch (error: any) {
             return res.status(400).json({
-                message: 'Either username or email must be provided'
+                message: error.message
             });
         }
-
-        // If no username provided, use email as username
-        const signupUsername = username || email;
-
-        await this.authService.signup({ 
-            username: signupUsername!, // We can safely use ! here as we've validated above
-            password, 
-            email 
-        });
-
-        return res.json({
-            message: 'User Signed Up'
-        });
     }
 
     /**
