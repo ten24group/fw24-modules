@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.1-beta.4](https://github.com/ten24group/fw24-modules/compare/v0.1.1-beta.3...v0.1.1-beta.4) (2025-03-10)
+
+
+### Bug Fixes
+
+* package import error ([8a41167](https://github.com/ten24group/fw24-modules/commit/8a4116773ec6b452395f2b704ef28edbb8d6a2c4))
+
 ### [0.1.1-beta.3](https://github.com/ten24group/fw24-modules/compare/v0.1.1-beta.2...v0.1.1-beta.3) (2025-03-03)
 
 
