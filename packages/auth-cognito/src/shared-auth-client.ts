@@ -1,6 +1,6 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
-import { AddUserToGroupOptions, CreateUserAuthenticationOptions, CreateUserOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UserDetails } from "./interfaces";
+import { AddUserToGroupOptions, CreateUserAuthenticationOptions, CreateUserOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UpdateUserAttributeOptions, UserDetails } from "./interfaces";
 import { DecodedIdToken } from "./interfaces";
 
 export class SharedAuthClient implements IAuthModuleClient {
@@ -68,8 +68,8 @@ export class SharedAuthClient implements IAuthModuleClient {
         }
     }
 
-    async createUser(options: CreateUserOptions): Promise<void> {
-        await this.authService.createUser(options);
+    async createUser(options: CreateUserOptions): Promise<UserDetails> {
+        return await this.authService.createUser(options);
     }
 
     async addUserToGroup(options: AddUserToGroupOptions): Promise<void> {
@@ -92,6 +92,14 @@ export class SharedAuthClient implements IAuthModuleClient {
 
     async resetUserPassword(options: ResetUserPasswordOptions): Promise<void> {
         return await this.authService.resetPassword(options.username);
+    };
+
+    async updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void> {
+        return await this.authService.updateUserAttributes(options);
+    };
+
+    async deleteUser(username: string): Promise<void> {
+        return await this.authService.deleteUser(username);
     };
 
     async verifyIdToken(idToken: string): Promise<DecodedIdToken> {

@@ -46,11 +46,11 @@ export type AdminMfaSettings = {
 }
 
 export type UserDetails = {
-    username: string;
+    Username: string;
     email?: string;
-    enabled?: boolean;
-    userStatus?: string;
-    attributes?: Array<{ Name: string, Value: string }>;
+    Enabled?: boolean;
+    UserStatus?: string;
+    Attributes?: Array<{ Name: string, Value: string }>;
 }
 
 /**
@@ -110,6 +110,7 @@ export interface IAuthService {
     getLoginOptions(username: string): Promise<InitiateAuthResult>;
     initiateOtpAuth(username: string, session: string): Promise<SignInResult>;
     respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult>;
+    respondToNewPasswordChallenge(username: string, newPassword: string, session: string): Promise<SignInResult>;
     refreshToken(refreshToken: string): Promise<SignInResult>;
 
     // Social sign-in methods
@@ -122,7 +123,7 @@ export interface IAuthService {
     updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void>;
 
     // Admin methods
-    createUser(options: CreateUserOptions): Promise<void>;
+    createUser(options: CreateUserOptions): Promise<UserDetails>;
     setPassword(username: string, password: string, forceChangePassword?: boolean): Promise<void>
     resetPassword(username: string): Promise<void>
     setUserGroups(username: string, newGroups: string[]): Promise<void>;
@@ -131,6 +132,7 @@ export interface IAuthService {
     getUserGroupNames(username: string): Promise<Array<string>>;
     removeUserFromGroup(username: string, groupName: string): Promise<void>;
     setUserMfaSettings(settings: AdminMfaSettings): Promise<void>;
+    deleteUser(username: string): Promise<void>;
     getSocialSignInConfig(redirectUri: string): Promise<SocialSignInConfigs>;
 }
 
@@ -174,7 +176,7 @@ export type ResetUserPasswordOptions = {
 
 export interface IAuthModuleClient {
     createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult>;
-    createUser(options: CreateUserOptions): Promise<void>;
+    createUser(options: CreateUserOptions): Promise<UserDetails>;
 
     getUser(usernameOrEmail: string): Promise<UserDetails>;
 
@@ -184,6 +186,8 @@ export interface IAuthModuleClient {
 
     setUserPassword(options: SetUserPasswordOptions): Promise<void>;
     resetUserPassword(options: ResetUserPasswordOptions): Promise<void>;
+    updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void>;
+    deleteUser(username: string): Promise<void>;
     verifyIdToken(idToken: string): Promise<DecodedIdToken>;
 
 }
