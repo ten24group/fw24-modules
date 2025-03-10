@@ -1,7 +1,7 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
-import { AddUserToGroupOptions, CreateUserAuthenticationOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult } from "./interfaces";
-import { UserType } from "@aws-sdk/client-cognito-identity-provider";
+import { AddUserToGroupOptions, CreateUserAuthenticationOptions, CreateUserOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UpdateUserAttributeOptions, UserDetails } from "./interfaces";
+import { DecodedIdToken } from "./interfaces";
 
 export class SharedAuthClient implements IAuthModuleClient {
 
@@ -11,8 +11,8 @@ export class SharedAuthClient implements IAuthModuleClient {
         @Inject(AuthServiceDIToken) private readonly authService: IAuthService
     ) { }
 
-    async getUserByUserSub(userSub: string): Promise<UserType | undefined> {
-        return this.authService.getUserByUserSub(userSub)
+    async getUser(usernameOrEmail: string): Promise<UserDetails> {
+        return this.authService.getUser(usernameOrEmail)
     }
 
     async createUserAuth(options: CreateUserAuthenticationOptions): Promise<void | SignInResult> {
@@ -68,6 +68,10 @@ export class SharedAuthClient implements IAuthModuleClient {
         }
     }
 
+    async createUser(options: CreateUserOptions): Promise<UserDetails> {
+        return await this.authService.createUser(options);
+    }
+
     async addUserToGroup(options: AddUserToGroupOptions): Promise<void> {
         await this.authService.addUserToGroup(options.username, options.group);
     }
@@ -88,6 +92,18 @@ export class SharedAuthClient implements IAuthModuleClient {
 
     async resetUserPassword(options: ResetUserPasswordOptions): Promise<void> {
         return await this.authService.resetPassword(options.username);
+    };
+
+    async updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void> {
+        return await this.authService.updateUserAttributes(options);
+    };
+
+    async deleteUser(username: string): Promise<void> {
+        return await this.authService.deleteUser(username);
+    };
+
+    async verifyIdToken(idToken: string): Promise<DecodedIdToken> {
+        return await this.authService.verifyIdToken(idToken);
     };
 
 }
