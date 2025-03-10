@@ -1,4 +1,4 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDeleteUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
@@ -93,6 +93,36 @@ export class CognitoService implements IAuthService {
         }
 
         return result.AuthenticationResult!;
+    }
+
+    async respondToNewPasswordChallenge(username: string, newPassword: string, session: string): Promise<SignInResult> {
+        const userPoolClientId = this.getUserPoolClientId();
+
+        const result = await this.identityProviderClient.send(
+            new RespondToAuthChallengeCommand({
+                ClientId: userPoolClientId,
+                ChallengeName: 'NEW_PASSWORD_REQUIRED',
+                Session: session,
+                ChallengeResponses: {
+                    USERNAME: username,
+                    NEW_PASSWORD: newPassword,
+                }
+            })
+        );
+
+        if (result.ChallengeName) {
+            return {
+                session: result.Session ?? '',
+                challengeName: result.ChallengeName,
+                challengeParameters: result.ChallengeParameters,
+            };
+        }
+
+        if (!result.AuthenticationResult) {
+            throw new Error('Failed to set new password');
+        }
+
+        return result.AuthenticationResult;
     }
 
     async signout(accessToken: string): Promise<void> {
@@ -257,10 +287,10 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async createUser(options: CreateUserOptions) {
+    async createUser(options: CreateUserOptions): Promise<UserDetails> {
         const { username, tempPassword, attributes = [] } = options;
 
-        await this.identityProviderClient.send(
+        const response = await this.identityProviderClient.send(
             new AdminCreateUserCommand({
                 Username: username,
                 UserPoolId: this.getUserPoolID(),
@@ -270,6 +300,8 @@ export class CognitoService implements IAuthService {
                 UserAttributes: attributes,
             })
         );
+
+        return response.User as UserDetails;
     }
 
     async setPassword(username: string, password: string, forceChangePassword = true) {
@@ -380,6 +412,15 @@ export class CognitoService implements IAuthService {
             })
         );
 
+    }
+
+    async deleteUser(username: string): Promise<void> {
+        await this.identityProviderClient.send(
+            new AdminDeleteUserCommand({
+                Username: username,
+                UserPoolId: this.getUserPoolID(),
+            })
+        );
     }
 
     async updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void> {
@@ -724,11 +765,11 @@ export class CognitoService implements IAuthService {
             );
 
             return {
-                username: result.Username!,
+                Username: result.Username!,
                 email: result.UserAttributes?.find(attr => attr.Name === 'email')?.Value,
-                enabled: result.Enabled,
-                userStatus: result.UserStatus,
-                attributes: result.UserAttributes?.map(attr => ({
+                Enabled: result.Enabled,
+                UserStatus: result.UserStatus,
+                Attributes: result.UserAttributes?.map(attr => ({
                     Name: attr.Name || '',
                     Value: attr.Value || ''
                 })),
@@ -750,11 +791,11 @@ export class CognitoService implements IAuthService {
 
                 const user = result.Users[0];
                 return {
-                    username: user.Username!,
+                    Username: user.Username!,
                     email: user.Attributes?.find(attr => attr.Name === 'email')?.Value,
-                    enabled: user.Enabled,
-                    userStatus: user.UserStatus,
-                    attributes: user.Attributes?.map(attr => ({
+                    Enabled: user.Enabled,
+                    UserStatus: user.UserStatus,
+                    Attributes: user.Attributes?.map(attr => ({
                         Name: attr.Name || '',
                         Value: attr.Value || ''
                     })),

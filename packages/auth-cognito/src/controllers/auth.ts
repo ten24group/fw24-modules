@@ -1078,4 +1078,56 @@ export class AuthController extends APIController {
             provider
         });
     }
+
+    /**
+     * Complete the NEW_PASSWORD_REQUIRED challenge by setting a new password
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "username": "user@example.com",
+     *   "session": "session-token-from-login",
+     *   "newPassword": "NewSecurePassword123!"
+     * }
+     * ```
+     * 
+     * Success response (tokens issued):
+     * ```json
+     * {
+     *   "AccessToken": "access-token",
+     *   "IdToken": "id-token",
+     *   "RefreshToken": "refresh-token",
+     *   "TokenType": "Bearer",
+     *   "ExpiresIn": 3600
+     * }
+     * ```
+     */
+    @Post('/setNewPassword', {
+        validations: {
+            username: { required: true },
+            session: { required: true },
+            newPassword: { required: true }
+        }
+    })
+    async setNewPassword(req: Request, res: Response) {
+        const { username, session, newPassword } = req.body as { 
+            username: string;
+            session: string;
+            newPassword: string;
+        };
+
+        try {
+            const result = await this.authService.respondToNewPasswordChallenge(
+                username,
+                newPassword,
+                session
+            );
+
+            return res.json(result);
+        } catch (error: any) {
+            return res.status(400).json({
+                message: error.message || 'Failed to set new password'
+            });
+        }
+    }
 }
