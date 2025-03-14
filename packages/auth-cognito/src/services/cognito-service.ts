@@ -496,8 +496,8 @@ export class CognitoService implements IAuthService {
 
         try {
             await jwtVerifier.verify(idToken);
-        } catch {
-            throw new Error(`Invalid ID-Token: ${idToken}`);
+        } catch (e) {
+            throw new Error(`Invalid ID-Token: ${e}`);
         }
 
         const identityPoolId = this.getIdentityPoolId();

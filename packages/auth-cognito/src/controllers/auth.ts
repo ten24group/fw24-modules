@@ -861,8 +861,8 @@ export class AuthController extends APIController {
     @Post('/setUserMfaSettings', {
         validations: {
             username: { required: true },
-            enableMfa: { required: true },
-            preferredMfaType: { required: false },
+            enabledMethods: { required: true },
+            preferredMethod: { required: false },
         }
     })
     async setUserMfaSettings(req: Request, res: Response) {    
