@@ -162,12 +162,14 @@ export class AuthModule extends AbstractFw24Module {
             actions: [
                 'cognito-idp:ListUsers',
                 'cognito-idp:AdminCreateUser',
+                'cognito-idp:AdminDeleteUser',
                 'cognito-idp:AdminAddUserToGroup',
                 'cognito-idp:AdminSetUserPassword',
                 'cognito-idp:AdminResetUserPassword',
                 'cognito-idp:AdminListGroupsForUser',
                 'cognito-idp:AdminRemoveUserFromGroup',
                 'cognito-idp:AdminUpdateUserAttributes',
+                'cognito-idp:AdminSetUserMFAPreference',
             ],
             resources: [ '*' ],
         });
