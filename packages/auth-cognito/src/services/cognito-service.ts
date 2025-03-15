@@ -1,6 +1,6 @@
 import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDeleteUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken, SignUpResult } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { resolveEnvValueFor } from "@ten24group/fw24";
 
@@ -9,7 +9,7 @@ export class CognitoService implements IAuthService {
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
 
-    async signup(options: SignUpOptions): Promise<SignInResult | void> {
+    async signup(options: SignUpOptions): Promise<SignInResult | SignUpResult> {
         const { username, password, email, autoSignIn = false } = options;
         const userPoolClientId = this.getUserPoolClientId();
 
@@ -44,7 +44,7 @@ export class CognitoService implements IAuthService {
             }
         });
 
-        await this.identityProviderClient.send(
+        const result = await this.identityProviderClient.send(
             new SignUpCommand({
                 ClientId: userPoolClientId,
                 Username: username,
@@ -57,6 +57,13 @@ export class CognitoService implements IAuthService {
         // If autoSignIn is true, attempt to sign in immediately after signup
         if (autoSignIn) {
             return this.signin(username, password);
+        }
+
+        return {
+            session: result.Session,
+            UserConfirmed: result.UserConfirmed,
+            UserSub: result.UserSub,
+            CodeDeliveryDetails: result.CodeDeliveryDetails,
         }
     }
 

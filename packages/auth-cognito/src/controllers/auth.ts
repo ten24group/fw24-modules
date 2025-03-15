@@ -136,13 +136,7 @@ export class AuthController extends APIController {
                 ...customAttributes
             });
 
-            if (autoSignIn && result) {
-                return res.json(result);
-            }
-
-            return res.json({
-                message: 'User registered successfully'
-            });
+            return res.json(result);
         } catch (error: any) {
             return res.status(400).json({
                 message: error.message
