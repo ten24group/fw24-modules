@@ -1,4 +1,4 @@
-import type { AuthenticationResultType, ChallengeNameType, EmailMfaSettingsType } from "@aws-sdk/client-cognito-identity-provider";
+import type { AuthenticationResultType, ChallengeNameType, CodeDeliveryDetailsType, EmailMfaSettingsType } from "@aws-sdk/client-cognito-identity-provider";
 import type { IAuthConstructConfig } from "@ten24group/fw24";
 
 
@@ -6,6 +6,13 @@ export type SignInResult = AuthenticationResultType | {
     session: string,
     challengeName: ChallengeNameType,
     challengeParameters?: Record<string, string>,
+}
+
+export type SignUpResult = {
+    session?: string,
+    UserConfirmed?: boolean,
+    UserSub?: string,
+    CodeDeliveryDetails?: CodeDeliveryDetailsType
 }
 
 export type InitiateAuthResult = {
@@ -95,7 +102,7 @@ export interface DecodedIdToken {
 
 export interface IAuthService {
     getUser(usernameOrEmail: string): Promise<UserDetails>;
-    signup(options: SignUpOptions): Promise<SignInResult | void>;
+    signup(options: SignUpOptions): Promise<SignInResult | SignUpResult>;
     signin(username: string, password: string): Promise<SignInResult>;
     signout(accessToken: string): Promise<void>;
     verify(username: string, code: string): Promise<void>;
