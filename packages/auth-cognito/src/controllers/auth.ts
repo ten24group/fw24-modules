@@ -163,15 +163,15 @@ export class AuthController extends APIController {
      * }
      * ```
      */
-    @Post('/getLoginOptions', {
+    @Post('/initiateAuth', {
         validations: {
             username: { required: true }
         }
     })
-    async getLoginOptions(req: Request, res: Response) {
+    async initiateAuth(req: Request, res: Response) {
         const { username } = req.body as { username: string };
 
-        const loginOptions = await this.authService.getLoginOptions(username);
+        const loginOptions = await this.authService.initiateAuth(username);
 
         return res.json(loginOptions);
     }
@@ -544,9 +544,9 @@ export class AuthController extends APIController {
         }
 
         const verificationUsername = username || email;
-        await this.authService.resendVerificationCode(verificationUsername!);
+        const result = await this.authService.resendVerificationCode(verificationUsername!);
 
-        return res.json({ message: 'Verification code resent' });
+        return res.json(result);
     }
 
     /**
@@ -618,9 +618,9 @@ export class AuthController extends APIController {
 
         const forgotPasswordUsername = username || email;
 
-        await this.authService.forgotPassword(forgotPasswordUsername!);
+        const result = await this.authService.forgotPassword(forgotPasswordUsername!);
 
-        return res.json({ message: 'Password reset email sent' });
+        return res.json(result);
     }
 
     /**

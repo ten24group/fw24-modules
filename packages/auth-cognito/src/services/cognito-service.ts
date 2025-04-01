@@ -171,18 +171,20 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async resendVerificationCode(username: string): Promise<void> {
+    async resendVerificationCode(username: string): Promise<any> {
         const userPoolClientId = this.getUserPoolClientId();
 
-        await this.identityProviderClient.send(
+        const result = await this.identityProviderClient.send(
             new ResendConfirmationCodeCommand({
                 ClientId: userPoolClientId,
                 Username: username,
             })
         );
+
+        return result;
     }
 
-    async getLoginOptions(username: string): Promise<InitiateAuthResult> {
+    async initiateAuth(username: string): Promise<InitiateAuthResult> {
         // This will throw if client ID is not configured
         const clientId = this.getUserPoolClientId();
 
@@ -332,13 +334,15 @@ export class CognitoService implements IAuthService {
     }
 
 
-    async forgotPassword(username: string): Promise<void> {
-        await this.identityProviderClient.send(
+    async forgotPassword(username: string) {
+        const result = await this.identityProviderClient.send(
             new ForgotPasswordCommand({
                 ClientId: this.getUserPoolClientId(),
                 Username: username
             })
         );
+
+        return result;
     }
 
     async confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void> {
