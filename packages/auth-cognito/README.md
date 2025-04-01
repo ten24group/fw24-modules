@@ -38,14 +38,14 @@ const authModule = new AuthModule({});
 ## Comprehensive Configuration
 
 ```typescript
-import { AuthModule } from '@ten24group/fw24-auth-cognito';
+  import { AuthModule } from '@ten24group/fw24-auth-cognito';
 import { Mfa, UserPoolEmail, VerificationEmailStyle } from 'aws-cdk-lib/aws-cognito';
 import { Duration } from 'aws-cdk-lib';
 
-const authModule = new AuthModule({
-  userPool: {
-    props: {
-      selfSignUpEnabled: true,
+  const authModule = new AuthModule({
+    userPool: {
+      props: {
+        selfSignUpEnabled: true,
       signInAliases: {
         email: true,
         username: true,
@@ -85,17 +85,17 @@ const authModule = new AuthModule({
     }
   },
   // Configure user groups
-  groups: [
-    {
-      name: 'admin',
+    groups: [
+      {
+        name: 'admin',
       precedence: 0,
       policyFilePaths: ['./src/policy/admin.json'],
       routes: ['mauth/addUserToGroup', 'mauth/removeUserFromGroup'],
-    },
-    {
-      name: 'user',
+      },
+      {
+        name: 'user',
       precedence: 1,
-      autoUserSignup: true,
+        autoUserSignup: true,
       policyFilePaths: ['./src/policy/user.json'],
     }
   ],

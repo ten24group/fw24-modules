@@ -30,7 +30,7 @@ export type SignUpOptions = {
 
 export type CreateUserOptions = {
     username: string,
-    tempPassword: string,
+    tempPassword?: string,
     attributes?: Array<{ Name: string, Value: string }>
 }
 
@@ -108,13 +108,13 @@ export interface IAuthService {
     verify(username: string, code: string): Promise<void>;
     verifyUserAttribute(accessToken: string, attributeName: string, code: string): Promise<void>;
     getUserAttributeVerificationCode(accessToken: string, attributeName: string): Promise<void>;
-    resendVerificationCode(username: string): Promise<void>;
+    resendVerificationCode(username: string): Promise<any>;
     getCredentials(idToken: string): Promise<any>;
     verifyIdToken(idToken: string): Promise<DecodedIdToken>;
     changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void>;
-    forgotPassword(username: string): Promise<void>;
+    forgotPassword(username: string): Promise<any>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
-    getLoginOptions(username: string): Promise<InitiateAuthResult>;
+    initiateAuth(username: string): Promise<InitiateAuthResult>;
     initiateOtpAuth(username: string, session: string): Promise<SignInResult>;
     respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResult>;
     respondToNewPasswordChallenge(username: string, newPassword: string, session: string): Promise<SignInResult>;
