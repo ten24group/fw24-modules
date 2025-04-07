@@ -2,7 +2,11 @@ import { AdminAddUserToGroupCommand, CognitoIdentityProviderClient } from '@aws-
 import { resolveEnvValueFor } from '@ten24group/fw24';
 
 export const handler = async (event: any) => {
-    console.log('::handler:: Event: ', event);
+    // Only assign the default role if this is a new sign-up confirmation.
+    if (event.triggerSource !== 'PostConfirmation_ConfirmSignUp') {
+        return event;
+    }
+
     const username = event.userName;
     const userPoolID = event.userPoolId;
     const autoUserSignupGroups = getAutoUserSignupGroups().split(',');
