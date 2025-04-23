@@ -111,7 +111,7 @@ export interface IAuthService {
     resendVerificationCode(username: string): Promise<any>;
     getCredentials(idToken: string): Promise<any>;
     verifyIdToken(idToken: string): Promise<DecodedIdToken>;
-    changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void>;
+    changePassword(accessToken: string, newPassword: string, oldPassword?: string): Promise<void>;
     forgotPassword(username: string): Promise<any>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
     initiateAuth(username: string): Promise<InitiateAuthResult>;
