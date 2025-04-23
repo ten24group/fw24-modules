@@ -286,12 +286,12 @@ export class CognitoService implements IAuthService {
         }
     }
 
-    async changePassword(accessToken: string, oldPassword: string, newPassword: string): Promise<void> {
+    async changePassword(accessToken: string, newPassword: string, oldPassword?: string): Promise<void> {
         await this.identityProviderClient.send(
             new ChangePasswordCommand({
                 AccessToken: accessToken,
-                PreviousPassword: oldPassword,
                 ProposedPassword: newPassword,
+                PreviousPassword: oldPassword,
             })
         );
     }

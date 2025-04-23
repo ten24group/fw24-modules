@@ -572,14 +572,13 @@ export class AuthController extends APIController {
     @Post('/changePassword', {
         validations: {
             accessToken: { required: true },
-            oldPassword: { required: true },
             newPassword: { required: true }
         }
     })
     async changePassword(req: Request, res: Response) {
-        const { accessToken, oldPassword, newPassword } = req.body as { accessToken: string; oldPassword: string; newPassword: string };
+        const { accessToken, newPassword, oldPassword } = req.body as { accessToken: string; newPassword: string; oldPassword?: string };
 
-        await this.authService.changePassword(accessToken, oldPassword, newPassword);
+        await this.authService.changePassword(accessToken, newPassword, oldPassword);
 
         return res.json({ message: 'Password changed' });
     }
