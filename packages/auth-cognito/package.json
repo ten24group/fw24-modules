@@ -1,6 +1,6 @@
 {
   "name": "@ten24group/fw24-auth-cognito",
-  "version": "0.1.1-beta.10",
+  "version": "0.1.1-beta.11",
   "description": "Cognito auth module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -51,11 +51,11 @@
     "@aws-sdk/client-cloudwatch-logs": "^3.0.0",
     "@aws-sdk/client-cognito-identity": "^3.0.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
-    "@ten24group/fw24": "^0.1.1-beta.12",
+    "@ten24group/fw24": "^0.1.1-beta.21",
     "aws-jwt-verify": "^4.0.0"
   },
   "peerDependencies": {
-    "@ten24group/fw24": "^0.1.1-beta.12"
+    "@ten24group/fw24": "^0.1.1-beta.21"
   },
   "resolutions": {
     "@smithy/types": "^2.0.0",
