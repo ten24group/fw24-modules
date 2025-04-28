@@ -1,5 +1,5 @@
 import { AuthModule } from './../index';
-import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject } from '@ten24group/fw24';
+import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject, Get, resolveEnvValueFor, toHumanReadableName } from '@ten24group/fw24';
 
 import { IAuthService, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider } from '../interfaces';
 import { AuthServiceDIToken } from '../const';
@@ -53,6 +53,20 @@ const signInValidations: InputValidationRule<SignInRequest> = {
         { name: 'identityPoolID', prefix: 'identitypool_authmodule' },
         { name: 'authDomain', prefix: 'userpool_authmodule' },
         { name: 'supportedIdentityProviders', prefix: 'userpool_authmodule' },
+        { name: 'authGroups', prefix: 'userpool_authmodule' },
+    ],
+    policies: [
+        {
+            actions: [
+                'cognito-idp:ListUsers', 
+                'cognito-idp:AdminGetUser', 
+                'cognito-idp:AdminListGroupsForUser', 
+                'cognito-idp:AdminAddUserToGroup',
+                'cognito-idp:AdminRemoveUserFromGroup',
+                'cognito-idp:AdminLinkProviderForUser'
+            ],
+            resources: ['*']
+        }
     ],
     module: {
         providedBy: AuthModule
@@ -662,6 +676,35 @@ export class AuthController extends APIController {
         await this.authService.confirmForgotPassword(confirmForgotPasswordUsername!, code, newPassword);
 
         return res.json({ message: 'Password reset' });
+    }
+
+    /**
+     * Admin endpoint to get list of user group options
+     * Requires AWS IAM authorization and appropriate group permissions
+     * 
+     * Example request:
+     * ```json
+     * 
+     * Success response:
+     * ```json
+     * [{
+     *   label: 'admin',
+     *   value: 'admin'
+     * }, {
+     *   label: 'user',
+     *   value: 'user'
+     * }]
+     * ```
+     */
+    @Authorizer({ type: 'AWS_IAM', requireRouteInGroupConfig: true })
+    @Get('/group-options')
+    getGroupOptions(req: Request, res: Response): Response {
+        const groups = resolveEnvValueFor({key: 'authGroups'}) || '';
+        const groupOptions = groups.split(',').map(group => ({
+            label: toHumanReadableName(group),
+            value: group
+        }));
+        return res.json({groups: groupOptions});
     }
 
     /**
