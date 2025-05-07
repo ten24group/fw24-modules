@@ -43,6 +43,8 @@ export const handler = async (event: any) => {
     // NOTE: This is where you would customize the message for the user
     // see https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-custom-message.html#cognito-user-pools-lambda-trigger-syntax-custom-message-trigger-source
 
+	console.log("custom message event: ", event);
+	
     let emailSubject: string | null = null;
     let emailMessage: string | null = null;
 
