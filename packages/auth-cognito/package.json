@@ -1,13 +1,13 @@
 {
   "name": "@ten24group/fw24-auth-cognito",
-  "version": "0.1.1-beta.11",
+  "version": "1.0.0",
   "description": "Cognito auth module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "release": "npm run build && standard-version --prerelease beta && git push --follow-tags && npm publish",
+    "release": "npm run build && standard-version && git push --follow-tags && npm publish",
     "release:BE": "npm run build && standard-version --prerelease beta && git push --follow-tags && npm publish --tag bleeding-edge",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -51,11 +51,11 @@
     "@aws-sdk/client-cloudwatch-logs": "^3.0.0",
     "@aws-sdk/client-cognito-identity": "^3.0.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
-    "@ten24group/fw24": "^0.1.1-beta.21",
+    "@ten24group/fw24": "^1.0.0",
     "aws-jwt-verify": "^4.0.0"
   },
   "peerDependencies": {
-    "@ten24group/fw24": "^0.1.1-beta.21"
+    "@ten24group/fw24": "^1.0.0"
   },
   "resolutions": {
     "@smithy/types": "^2.0.0",
