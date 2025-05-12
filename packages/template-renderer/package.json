@@ -1,6 +1,6 @@
 {
   "name": "@ten24group/fw24-template-renderer",
-  "version": "0.1.1-beta.1",
+  "version": "1.0.0",
   "description": "Template-renderer module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "watch": "tsc -w",
-    "release": "npm run build && standard-version --skip.tag --prerelease beta && git push --follow-tags && npm publish --access public"
+    "release": "npm run build && standard-version --skip.tag && git push --follow-tags && npm publish --access public"
   },
   "repository": {
     "type": "git",
@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/ten24group/fw24-modules#readme",
   "devDependencies": {
-    "@ten24group/fw24": "^0.1.1-beta.1",
+    "@ten24group/fw24": "^1.0.0",
     "@types/node": "^20.12.7",
     "standard-version": "^9.5.0",
     "typescript": "^5.4.5"
@@ -36,6 +36,6 @@
     "handlebars": "^4.7.8"
   },
   "peerDependencies": {
-    "@ten24group/fw24": "^0.1.1-beta.1"
+    "@ten24group/fw24": "^1.0.0"
   }
 }
