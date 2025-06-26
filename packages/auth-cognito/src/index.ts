@@ -5,6 +5,7 @@ import { AuthModuleClientDIToken, AuthModulePolicy_AllowCreateUserAuth, AuthServ
 import { IAuthModuleConfig } from './interfaces';
 import { CognitoService } from './services/cognito-service';
 import { SharedAuthClient } from './shared-auth-client';
+import { AuthUIConstruct } from './ui-construct';
 import { type UserPoolOperation } from 'aws-cdk-lib/aws-cognito';
 
 export * from './interfaces'
@@ -55,10 +56,10 @@ export class AuthModule extends AbstractFw24Module {
         this.logger.debug("AuthModule: ", config);
 
         // Create a map of triggers by type to handle overrides
-        const triggerMap = new Map<UserPoolOperation | TriggerType, ArrayElement<IAuthModuleConfig['triggers']>>();
+        const triggerMap = new Map<UserPoolOperation | TriggerType, ArrayElement<IAuthModuleConfig[ 'triggers' ]>>();
 
         // Add auto-verify trigger if enabled
-        if(config.autoVerifyUser){
+        if (config.autoVerifyUser) {
             const preSignupTrigger = {
                 trigger: 'PRE_SIGN_UP' as const,
                 functionProps: {
@@ -70,7 +71,7 @@ export class AuthModule extends AbstractFw24Module {
         }
 
         // Add custom message trigger if templates are provided
-        if(config.customMessageTemplates){
+        if (config.customMessageTemplates) {
             const customMessageTrigger = this.makeCustomMessageHandlerTrigger(config.customMessageTemplates);
             if (customMessageTrigger) {
                 triggerMap.set(customMessageTrigger.trigger, customMessageTrigger);
@@ -78,7 +79,7 @@ export class AuthModule extends AbstractFw24Module {
         }
 
         // Override with any user-provided triggers
-        if(config.triggers){
+        if (config.triggers) {
             config.triggers.forEach(trigger => {
                 triggerMap.set(trigger.trigger, trigger);
             });
@@ -87,13 +88,21 @@ export class AuthModule extends AbstractFw24Module {
         // Convert map back to array
         const allTriggers = Array.from(triggerMap.values());
         this.logger.debug("All Triggers: ", allTriggers);
-        
-        const cognito = new AuthConstruct({	
+
+        const cognito = new AuthConstruct({
             ...config,
             triggers: allTriggers,
         });
 
-        this.constructs.set('auth-cognito', cognito );
+        this.constructs.set('auth-cognito', cognito);
+
+        // If UI hosting is enabled, register the UI construct after Cognito
+        if (config.ui?.enabled) {
+            const ui = new AuthUIConstruct(config.ui);
+            // Ensure UI resources are created after the Cognito construct
+            ui.dependencies = [ 'auth-cognito' ];
+            this.constructs.set('auth-ui', ui);
+        }
     }
 
     makeCustomMessageHandlerTrigger(customMessageTemplates: IAuthModuleConfig[ 'customMessageTemplates' ]): ArrayElement<IAuthModuleConfig[ 'triggers' ]> | undefined {
