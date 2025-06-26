@@ -69,7 +69,12 @@ export class AuthUIConstruct implements FW24Construct {
       sources: [
         Source.asset(assetPath),
         // runtime config overrides placeholder config.json
-        Source.jsonData('config.json', { apiBaseUrl: config.apiBaseUrl, theme: config.theme }),
+        Source.jsonData('config.json', {
+          apiBaseUrl: config.apiBaseUrl,
+          theme: config.theme,
+          features: config.features,
+          i18n: config.i18n,
+        }),
         // copy our dev index.html for defaultRootObject
         Source.asset(path.resolve(__dirname, 'src/ui/index.html')),
       ],

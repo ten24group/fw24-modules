@@ -259,6 +259,19 @@ export interface IAuthModuleConfig extends IAuthConstructConfig {
             logoUrl?: string;
             customCss?: string;
         };
+        /** Feature toggles for advanced auth flows */
+        features?: {
+            pkce?: { enabled: boolean; redirectPath: string; scope?: string };
+            social?: {
+                enabled: boolean;
+                providers: Array<{ id: string; authorizeUrl: string; clientId: string; scope: string }>;
+                callbackPath: string;
+            };
+            passwordless?: { enabled: boolean; loginPath: string; confirmPath: string };
+            mfa?: { enabled: boolean; methods: ('SMS' | 'TOTP' | 'EMAIL')[] };
+        };
+        /** Internationalization settings */
+        i18n?: { enabled: boolean; defaultLocale: string; locales: string[] };
     };
 }
 

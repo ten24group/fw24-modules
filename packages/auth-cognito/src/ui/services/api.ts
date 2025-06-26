@@ -84,6 +84,22 @@ export function respondToOtpChallenge(username: string, session: string, code: s
   return callApi<SignInResponse>('/respondToOtpChallenge', { username, session, code });
 }
 
+export function sendMagicLink(email: string): Promise<void> {
+  return callApi<void>('/initiateAuth', { username: email, authFlow: 'CUSTOM_AUTH' });
+}
+
+export function verifyMagicLink(session: string, code: string): Promise<Tokens> {
+  return callApi<Tokens>('/respondToAuthChallenge', { session, code, challengeName: 'CUSTOM_CHALLENGE' });
+}
+
+export function initiateSmsMfa(username: string, session: string): Promise<Challenge> {
+  return callApi<Challenge>('/initiateAuth', { username, session, authFlow: 'USER_PASSWORD_AUTH' });
+}
+
+export function initiateSoftwareTokenMfa(username: string, session: string): Promise<Challenge> {
+  return callApi<Challenge>('/initiateAuth', { username, session, authFlow: 'USER_PASSWORD_AUTH' });
+}
+
 export function refreshToken(refreshToken: string): Promise<Tokens> {
   return callApi<Tokens>('/refreshToken', { refreshToken });
 }

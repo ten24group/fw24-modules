@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { confirmSignUp } from '../../services/api';
 import TextInput from '../ui/TextInput';
 import Button from '../ui/Button';
+import { useTranslation } from 'react-i18next';
 
 interface LocationState {
   username: string;
@@ -16,6 +17,7 @@ const ConfirmSignUpPage: React.FC = () => {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,14 +35,14 @@ const ConfirmSignUpPage: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2>Confirm Sign Up</h2>
-      <p>Enter the verification code sent to your email.</p>
-      <TextInput label="Code" value={code} onChange={e => setCode(e.target.value)} placeholder="Verification code" />
-      <Button type="submit" loading={loading}>Confirm</Button>
+      <h2>{t('confirmSignUp.title')}</h2>
+      <p>{t('confirmSignUp.prompt')}</p>
+      <TextInput label={t('confirmSignUp.codeLabel')} value={code} onChange={e => setCode(e.target.value)} placeholder="Verification code" />
+      <Button type="submit" loading={loading}>{t('confirmSignUp.button')}</Button>
       {error && <div className="auth-error">{error}</div>}
       <div className="auth-links">
-        <Link to="/signup" className="auth-link">Back to Sign Up</Link>{' | '}
-        <Link to="/signin" className="auth-link">Back to Sign In</Link>
+        <Link to="/signup" className="auth-link">{t('confirmSignUp.backToSignUpLink')}</Link>{' | '}
+        <Link to="/signin" className="auth-link">{t('signUp.backLink')}</Link>
       </div>
     </form>
   );

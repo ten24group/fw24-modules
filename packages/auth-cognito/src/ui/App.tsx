@@ -7,6 +7,9 @@ import ConfirmSignUpPage from './components/pages/ConfirmSignUpPage';
 import ForgotPasswordPage from './components/pages/ForgotPasswordPage';
 import ConfirmForgotPasswordPage from './components/pages/ConfirmForgotPasswordPage';
 import MfaPage from './components/pages/MfaPage';
+import MagicLinkRequestPage from './components/pages/MagicLinkRequestPage';
+import MagicLinkConfirmPage from './components/pages/MagicLinkConfirmPage';
+import OAuthCallbackPage from './components/pages/OAuthCallbackPage';
 import config from './config.json';
 
 const App: React.FC = () => {
@@ -21,7 +24,11 @@ const App: React.FC = () => {
           {features.signUp && <Route path="/confirm-signup" element={<ConfirmSignUpPage />} />}
           {features.forgotPassword && <Route path="/forgot-password" element={<ForgotPasswordPage />} />}
           {features.forgotPassword && <Route path="/confirm-forgot" element={<ConfirmForgotPasswordPage />} />}
-          {features.mfa && <Route path="/mfa" element={<MfaPage />} />}
+          {features.mfa?.enabled && <Route path="/mfa" element={<MfaPage />} />}
+          {features.passwordless?.enabled && <Route path={features.passwordless.loginPath} element={<MagicLinkRequestPage />} />}
+          {features.passwordless?.enabled && <Route path={features.passwordless.confirmPath} element={<MagicLinkConfirmPage />} />}
+          {(features.pkce?.enabled || features.social?.enabled) && <Route path={features.pkce?.redirectPath || features.social?.callbackPath} element={<OAuthCallbackPage />} />}
+          
           {/* Fallback to sign-in for unknown routes */}
           <Route path="*" element={<Navigate to="/signin" />} />
         </Routes>

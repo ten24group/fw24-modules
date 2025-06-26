@@ -1,0 +1,73 @@
+{
+  "signIn": {
+    "title": "Sign In",
+    "userLabel": "Username or Email",
+    "passwordLabel": "Password",
+    "button": "Sign In",
+    "forgotPasswordLink": "Forgot Password",
+    "signUpLink": "Sign Up",
+    "or": "or",
+    "pkceButton": "Sign in with SSO"
+  },
+  "signUp": {
+    "title": "Sign Up",
+    "usernameLabel": "Username",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "button": "Sign Up",
+    "backLink": "Back to Sign In"
+  },
+  "confirmSignUp": {
+    "title": "Confirm Sign Up",
+    "prompt": "Enter the verification code sent to your email.",
+    "codeLabel": "Code",
+    "button": "Confirm",
+    "backToSignUpLink": "Back to Sign Up"
+  },
+  "forgotPassword": {
+    "title": "Forgot Password",
+    "prompt": "Enter your username or email to receive a reset code.",
+    "button": "Send Code"
+  },
+  "confirmForgotPassword": {
+    "title": "Reset Password",
+    "codeLabel": "Verification Code",
+    "newPasswordLabel": "New Password",
+    "button": "Reset Password"
+  },
+  "mfa": {
+    "title": "Enter MFA Code",
+    "prompt": "Please enter the code from your authenticator app or SMS.",
+    "codeLabel": "MFA Code",
+    "button": "Submit",
+    "cancelLink": "Cancel"
+  },
+  "mfaSelect": {
+    "title": "Choose MFA Method",
+    "prompt": "How would you like to receive your code?",
+    "smsButton": "Send SMS",
+    "totpButton": "Use Authenticator App"
+  },
+  "magicLinkRequest": {
+    "title": "Passwordless Sign-In",
+    "prompt": "Enter your email to receive a magic link.",
+    "emailLabel": "Email",
+    "button": "Send Link"
+  },
+  "magicLinkConfirm": {
+    "title": "Verifying...",
+    "prompt": "Verifying your magic link. You will be redirected shortly."
+  },
+  "oauthCallback": {
+    "title": "Authenticating...",
+    "prompt": "Finalizing authentication. Please wait."
+  },
+  "social": {
+    "signInWith": "Sign in with {{provider}}"
+  },
+  "errors": {
+    "generic": "An unexpected error occurred. Please try again.",
+    "tokenExchangeFailed": "Token exchange failed.",
+    "pkceVerifierMissing": "PKCE verifier missing."
+  }
+} 

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { confirmForgotPassword } from '../../services/api';
 import TextInput from '../ui/TextInput';
 import Button from '../ui/Button';
+import { useTranslation } from 'react-i18next';
 
 interface LocationState {
   username: string;
@@ -17,6 +18,7 @@ const ConfirmForgotPasswordPage: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,13 +36,13 @@ const ConfirmForgotPasswordPage: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2>Reset Password</h2>
-      <TextInput label="Code" value={code} onChange={e => setCode(e.target.value)} placeholder="Verification code" />
-      <TextInput label="New Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password" />
-      <Button type="submit" loading={loading}>Reset Password</Button>
+      <h2>{t('confirmForgotPassword.title')}</h2>
+      <TextInput label={t('confirmForgotPassword.codeLabel')} value={code} onChange={e => setCode(e.target.value)} placeholder="Verification code" />
+      <TextInput label={t('confirmForgotPassword.newPasswordLabel')} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password" />
+      <Button type="submit" loading={loading}>{t('confirmForgotPassword.button')}</Button>
       {error && <div className="auth-error">{error}</div>}
       <div className="auth-links">
-        <Link to="/signin" className="auth-link">Back to Sign In</Link>
+        <Link to="/signin" className="auth-link">{t('signUp.backLink')}</Link>
       </div>
     </form>
   );

@@ -9,12 +9,10 @@
     "customCss": ""
   },
   "features": {
-    "signUp": true,
-    "forgotPassword": true,
-    "mfa": true,
-    "social": {
-      "enabled": false,
-      "providers": []
-    }
-  }
+    "pkce": { "enabled": false, "redirectPath": "/callback", "scope": "openid profile email" },
+    "social": { "enabled": false, "providers": [], "callbackPath": "/callback" },
+    "passwordless": { "enabled": false, "loginPath": "/magic", "confirmPath": "/magic/verify" },
+    "mfa": { "enabled": true, "methods": ["SMS"] }
+  },
+  "i18n": { "enabled": false, "defaultLocale": "en", "locales": ["en"] }
 } 

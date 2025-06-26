@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import config from './config.json';
 import baseStyles from './styles.css?inline';
+import './i18n'; // initialize i18next
 
 // Custom element to embed the Auth Widget
 class AuthWidget extends HTMLElement {
@@ -10,7 +11,8 @@ class AuthWidget extends HTMLElement {
 
   connectedCallback() {
     const shadow = this.attachShadow({ mode: 'open' });
-    // theme variable overrides
+    
+    // CSS and theme injection
     const varStyle = document.createElement('style');
     const theme = (config as any).theme || {};
     const colors = theme.colors || {};
@@ -24,12 +26,16 @@ class AuthWidget extends HTMLElement {
     `;
     shadow.appendChild(varStyle);
 
-    // default widget styles
     const baseStyle = document.createElement('style');
     baseStyle.textContent = baseStyles;
     shadow.appendChild(baseStyle);
 
-    // inject logo if provided
+    if (theme.customCss) {
+      const customStyle = document.createElement('style');
+      customStyle.textContent = theme.customCss;
+      shadow.appendChild(customStyle);
+    }
+    
     if (theme.logoUrl) {
       const logo = document.createElement('img');
       logo.src = theme.logoUrl;
