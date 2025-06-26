@@ -275,6 +275,24 @@ export class AuthController extends APIController {
     }
 
     /**
+     * Respond to any generic authentication challenge
+     * Used for custom flows like passwordless or for MFA method selection
+     */
+    @Post('/respondToAuthChallenge')
+    async respondToAuthChallenge(req: Request, res: Response) {
+        const { username, session, challengeName, challengeResponses } = req.body as {
+            username: string;
+            session: string;
+            challengeName: string;
+            challengeResponses: Record<string, any>;
+        };
+
+        const result = await this.authService.respondToAuthChallenge(username, session, challengeName, challengeResponses);
+
+        return res.json(result);
+    }
+
+    /**
      * Sign in with email and password
      * 
      * Example request with username and password:

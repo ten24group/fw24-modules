@@ -1,36 +1,43 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { verifyMagicLink, Tokens } from '../../services/api';
+import { verifyMagicLink, Tokens, SignInResponse } from '../../services/api';
 
 const MagicLinkConfirmPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
     const session = searchParams.get('session');
     const code = searchParams.get('code');
+    const username = searchParams.get('username');
 
-    if (!session || !code) {
+    if (!session || !code || !username) {
       setError('Magic link is missing required parameters.');
       return;
     }
 
-    verifyMagicLink(session, code)
-      .then((tokens: Tokens) => {
-        window.parent.dispatchEvent(new CustomEvent('auth:success', { detail: tokens }));
+    verifyMagicLink(username, session, code)
+      .then((response: SignInResponse) => {
+        if ('IdToken' in response) {
+          console.log('Magic link sign-in successful');
+          navigate('/');
+        } else {
+          setError(t('errors.unexpectedChallenge'));
+        }
       })
       .catch((err: any) => {
         setError(err.message || t('errors.generic'));
       });
-  }, [searchParams, t]);
+  }, [searchParams, t, navigate]);
 
   return (
-    <div>
+    <div className="form-container">
       <h2>{t('magicLinkConfirm.title')}</h2>
       {error ? (
-        <div className="auth-error">{error}</div>
+        <p className="error-message">{error}</p>
       ) : (
         <p>{t('magicLinkConfirm.prompt')}</p>
       )}

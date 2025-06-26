@@ -954,4 +954,39 @@ export class CognitoService implements IAuthService {
             throw error;
         }
     }
+
+    private formatTokens(authResult: AuthenticationResultType) {
+        return {
+            AccessToken: authResult.AccessToken,
+            IdToken: authResult.IdToken,
+            RefreshToken: authResult.RefreshToken,
+            TokenType: authResult.TokenType,
+            ExpiresIn: authResult.ExpiresIn,
+        };
+    }
+
+    public async respondToAuthChallenge(username: string, session: string, challengeName: string, challengeResponses: Record<string, any>): Promise<any> {
+        const command = new RespondToAuthChallengeCommand({
+            ClientId: this.getUserPoolClientId(),
+            ChallengeName: challengeName as ChallengeNameType,
+            Session: session,
+            ChallengeResponses: challengeResponses,
+        });
+
+        const response = await this.identityProviderClient.send(command);
+
+        if (response.AuthenticationResult) {
+            return this.formatTokens(response.AuthenticationResult);
+        }
+
+        if (response.ChallengeName) {
+            return {
+                challengeName: response.ChallengeName,
+                session: response.Session,
+                challengeParameters: response.ChallengeParameters,
+            };
+        }
+
+        return response;
+    }
 }

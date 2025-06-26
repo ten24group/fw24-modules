@@ -26,6 +26,7 @@ export interface SignUpParams {
   autoSignIn?: boolean;
   [key: string]: unknown;
 }
+
 export interface SignUpResponse {
   session?: string;
   UserConfirmed?: boolean;
@@ -48,10 +49,17 @@ async function callApi<T>(path: string, body: object): Promise<T> {
     const err = (await res.json()) as { message: string };
     throw new Error(err.message);
   }
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  try {
+      return JSON.parse(text) as T;
+  } catch(e) {
+      return text as unknown as T;
+  }
 }
 
 // ===== API FUNCTIONS =====
+
+// --- Core Auth ---
 export function signIn(params: { username?: string; email?: string; password: string }): Promise<SignInResponse> {
   return callApi<SignInResponse>('/signin', params);
 }
@@ -61,7 +69,12 @@ export function signUp(params: SignUpParams): Promise<SignUpResponse> {
 }
 
 export function confirmSignUp(identifier: string, code: string): Promise<void> {
-  return callApi<void>('/verify', { username: identifier, code });
+  // Backend expects email for verification, using identifier as email
+  return callApi<void>('/verify', { email: identifier, code });
+}
+
+export function resendConfirmationCode(identifier: string): Promise<void> {
+  return callApi<void>('/resendVerificationCode', { username: identifier });
 }
 
 export function forgotPassword(identifier: string): Promise<void> {
@@ -72,45 +85,67 @@ export function confirmForgotPassword(identifier: string, code: string, newPassw
   return callApi<void>('/confirmForgotPassword', { username: identifier, code, newPassword });
 }
 
-export function initiateAuth(username: string): Promise<{ session: string; challenges: string[] }> {
-  return callApi(`/initiateAuth`, { username });
-}
-
-export function initiateOtpAuth(username: string, session: string): Promise<Challenge> {
-  return callApi<Challenge>('/initiateOtpAuth', { username, session });
-}
-
-export function respondToOtpChallenge(username: string, session: string, code: string): Promise<SignInResponse> {
-  return callApi<SignInResponse>('/respondToOtpChallenge', { username, session, code });
-}
-
-export function sendMagicLink(email: string): Promise<void> {
-  return callApi<void>('/initiateAuth', { username: email, authFlow: 'CUSTOM_AUTH' });
-}
-
-export function verifyMagicLink(session: string, code: string): Promise<Tokens> {
-  return callApi<Tokens>('/respondToAuthChallenge', { session, code, challengeName: 'CUSTOM_CHALLENGE' });
-}
-
-export function initiateSmsMfa(username: string, session: string): Promise<Challenge> {
-  return callApi<Challenge>('/initiateAuth', { username, session, authFlow: 'USER_PASSWORD_AUTH' });
-}
-
-export function initiateSoftwareTokenMfa(username: string, session: string): Promise<Challenge> {
-  return callApi<Challenge>('/initiateAuth', { username, session, authFlow: 'USER_PASSWORD_AUTH' });
-}
-
-export function refreshToken(refreshToken: string): Promise<Tokens> {
-  return callApi<Tokens>('/refreshToken', { refreshToken });
+export function setNewPassword(username: string, session: string, newPassword: string): Promise<SignInResponse> {
+  return callApi<SignInResponse>('/setNewPassword', { username, session, newPassword });
 }
 
 export function signOut(accessToken: string): Promise<void> {
   return callApi<void>('/signout', { accessToken });
 }
 
-// Redirect user to social provider OAuth2 authorization
-export function socialSignIn(provider: string): void {
-  // Redirect to the OAuth2 authorize endpoint with the provider and current URL
-  const redirectUri = encodeURIComponent(window.location.href);
-  window.location.href = `${baseUrl}/oauth2/authorize?identity_provider=${provider}&redirect_uri=${redirectUri}`;
+export function refreshToken(refreshTokenValue: string): Promise<Tokens> {
+  return callApi<Tokens>('/refreshToken', { refreshToken: refreshTokenValue });
+}
+
+// --- Generic Challenge Responder ---
+function respondToAuthChallenge(username: string, session: string, challengeName: string, challengeResponses: Record<string, any>): Promise<SignInResponse> {
+    return callApi<SignInResponse>('/respondToAuthChallenge', {
+        username,
+        session,
+        challengeName,
+        challengeResponses
+    });
+}
+
+// --- Magic Link ---
+export function sendMagicLink(email: string): Promise<Challenge> {
+  // initiateAuth for CUSTOM_AUTH flow returns a Challenge
+  return callApi<Challenge>('/initiateAuth', { username: email, authFlow: 'CUSTOM_AUTH' });
+}
+
+export function verifyMagicLink(username: string, session: string, code: string): Promise<SignInResponse> {
+    return respondToAuthChallenge(username, session, 'CUSTOM_CHALLENGE', {
+        USERNAME: username,
+        ANSWER: code,
+    });
+}
+
+// --- Enhanced MFA ---
+export function selectMfaMethod(username: string, session: string, mfaMethod: 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA'): Promise<Challenge> {
+  return callApi<Challenge>('/respondToAuthChallenge', {
+    username,
+    session,
+    challengeName: 'SELECT_MFA_TYPE',
+    challengeResponses: {
+      ANSWER: mfaMethod,
+    },
+  });
+}
+
+export function respondToMfaChallenge(username: string, session: string, code: string, mfaType: 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA'): Promise<SignInResponse> {
+    return respondToAuthChallenge(username, session, mfaType, {
+        USERNAME: username,
+        [mfaType === 'SMS_MFA' ? 'SMS_MFA_CODE' : 'SOFTWARE_TOKEN_MFA_CODE']: code,
+    });
+}
+
+
+// --- Social Sign In ---
+export async function initiateSocialSignIn(provider: string, redirectUri: string): Promise<void> {
+  const { authorizationUrl } = await callApi<{ authorizationUrl: string }>('/initiateSocialSignIn', { provider, redirectUri });
+  window.location.href = authorizationUrl;
+}
+
+export function completeSocialSignIn(provider: string, code: string, redirectUri: string): Promise<SignInResponse> {
+  return callApi<SignInResponse>('/completeSocialSignIn', { provider, code, redirectUri });
 } 

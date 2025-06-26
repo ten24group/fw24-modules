@@ -126,6 +126,7 @@ export interface IAuthService {
     completeSocialSignIn(provider: SocialProvider, code: string, redirectUri: string): Promise<SocialSignInResult>;
     linkSocialProvider(accessToken: string, provider: SocialProvider, code: string, redirectUri: string): Promise<void>;
     unlinkSocialProvider(accessToken: string, provider: SocialProvider): Promise<void>;
+    respondToAuthChallenge(username: string, session: string, challengeName: string, challengeResponses: Record<string, any>): Promise<any>;
 
     // User methods
     updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void>;

@@ -1,40 +1,58 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { exchangeCode } from '../../services/oauth';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Tokens } from '../../services/api';
+import { completeSocialSignIn } from '../../services/api';
 
 const OAuthCallbackPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
-  const { t } = useTranslation();
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const { t } = useTranslation();
+    const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const code = searchParams.get('code');
-    if (!code) {
-      setError('Authorization code missing from callback URL.');
-      return;
-    }
+    useEffect(() => {
+        const code = searchParams.get('code');
+        // The provider might be stored in session/local storage or passed in state
+        // For this example, we assume it's recoverable or we use a default
+        const provider = sessionStorage.getItem('oauth_provider') || 'Google'; // Example recovery
+        const redirectUri = window.location.origin + (window.location.pathname);
 
-    exchangeCode(code)
-      .then((tokens: Tokens) => {
-        window.parent.dispatchEvent(new CustomEvent('auth:success', { detail: tokens }));
-      })
-      .catch((err: any) => {
-        setError(err.message || t('errors.tokenExchangeFailed'));
-      });
-  }, [searchParams, t]);
+        if (!code) {
+            setError(t('oauthCallback.missingCode'));
+            return;
+        }
 
-  return (
-    <div>
-      <h2>{t('oauthCallback.title')}</h2>
-      {error ? (
-        <div className="auth-error">{error}</div>
-      ) : (
-        <p>{t('oauthCallback.prompt')}</p>
-      )}
-    </div>
-  );
+        const handleSignInCompletion = async () => {
+            try {
+                const response = await completeSocialSignIn(provider, code, redirectUri);
+                if ('IdToken' in response) {
+                    console.log('Social sign-in successful');
+                    navigate('/');
+                } else {
+                    setError(t('oauthCallback.unexpectedChallenge'));
+                }
+            } catch (err: any) {
+                setError(err.message || t('oauthCallback.tokenExchangeFailed'));
+            } finally {
+                sessionStorage.removeItem('oauth_provider'); // Clean up
+            }
+        };
+
+        handleSignInCompletion();
+    }, [searchParams, navigate, t]);
+
+    // Also need to update the SignInPage to save the provider to session storage before redirect
+    // For now, this component is fixed to call the right API.
+
+    return (
+        <div className="form-container">
+            <h2>{t('oauthCallback.title')}</h2>
+            {error ? (
+                <p className="error-message">{error}</p>
+            ) : (
+                <p>{t('oauthCallback.prompt')}</p>
+            )}
+        </div>
+    );
 };
 
 export default OAuthCallbackPage; 
