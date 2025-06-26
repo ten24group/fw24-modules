@@ -1,6 +1,6 @@
 {
   "name": "@ten24group/fw24-pdf-renderer",
-  "version": "0.1.1-beta.2",
+  "version": "1.0.0",
   "description": "PDF Renderer module for fw24",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,7 @@
   "homepage": "https://github.com/ten24group/fw24-modules#readme",
   "devDependencies": {
     "@sparticuz/chromium": "^130.0.0",
-    "@ten24group/fw24": "^0.1.1-beta.1",
+    "@ten24group/fw24": "^1.0.0",
     "@types/node": "^20.12.7",
     "standard-version": "^9.5.0",
     "typescript": "^5.4.5"
@@ -38,6 +38,6 @@
   },
   "peerDependencies": {
     "@sparticuz/chromium": "^130.0.0",
-    "@ten24group/fw24": "^0.1.1-beta.1"
+    "@ten24group/fw24": "^1.0.0"
   }
 }

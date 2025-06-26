@@ -275,7 +275,8 @@ export interface IAuthModuleConfig extends IAuthConstructConfig {
     };
 }
 
-export type SocialProvider = 'Google' | 'Facebook';
+export const SOCIAL_PROVIDERS = ['Google', 'Facebook'] as const;
+export type SocialProvider = typeof SOCIAL_PROVIDERS[number];
 
 export type SocialSignInConfig = {
     authorizationUrl: string;

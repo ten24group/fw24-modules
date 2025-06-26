@@ -1,10 +1,12 @@
 import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDeleteUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken, SignUpResult } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken, SignUpResult, SOCIAL_PROVIDERS } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
-import { resolveEnvValueFor } from "@ten24group/fw24";
+import { createLogger, ILogger, resolveEnvValueFor } from "@ten24group/fw24";
 
 export class CognitoService implements IAuthService {
+    readonly logger: ILogger = createLogger(CognitoService);
+
 
     private identityProviderClient = new CognitoIdentityProviderClient({});
     private identityClient = new CognitoIdentityClient({});
@@ -390,9 +392,32 @@ export class CognitoService implements IAuthService {
         return groupsList.Groups?.map(g => g.GroupName ?? '') ?? [];
     }
 
-    async setUserGroups(username: string, newGroups: string[]): Promise<void> {
+    async setUserGroups(username: string, newGroups: string[], updateSocialProviders = true): Promise<void> {
+        const socialProviderList = this.getSupportedSocialProviders();
+        // if social provider is enabled, get all the users from this username
+        if (updateSocialProviders) {
+            // get the user email
+            const user = await this.identityProviderClient.send(
+                new AdminGetUserCommand({
+                    UserPoolId: this.getUserPoolID(),
+                    Username: username,
+                })
+            );
+            // get all the users with the same email
+            const users = await this.identityProviderClient.send(
+                new ListUsersCommand({
+                    UserPoolId: this.getUserPoolID(),
+                    Filter: `email = "${user.UserAttributes?.find(attr => attr.Name === 'email')?.Value}"`,
+                })
+            );
+            if (users.Users) {
+                for (const user of users.Users) {
+                    await this.setUserGroups(user.Username!, newGroups, false);
+                }
+            }
+        }
+        
         const existingUserGroups = await this.getUserGroupNames(username);
-
         const promises = [];
 
         // collect only the new groups to be added
@@ -404,7 +429,13 @@ export class CognitoService implements IAuthService {
 
         // collect any existing-groups which are not part of new-groups for removal
         for (const group of existingUserGroups) {
-            if (!newGroups.includes(group)) {
+            // do not remove the social provider auto generated group
+            const isSocialProviderGroup = socialProviderList.some(provider => group.endsWith(provider));
+            if (
+                !newGroups.includes(group) &&
+                !isSocialProviderGroup
+            ) {
+                this.logger.debug('removing group', username, group, isSocialProviderGroup);
                 promises.push(this.removeUserFromGroup(username, group))
             }
         }
@@ -589,9 +620,13 @@ export class CognitoService implements IAuthService {
         return configs;
     }
 
+    private getSupportedSocialProviders(): string[] {
+        return [...SOCIAL_PROVIDERS];
+    }
+
     private isProviderEnabled(provider: SocialProvider): boolean {
         // This is a simple check - you might want to enhance this based on your configuration
-        const supportedProviders = resolveEnvValueFor({key: 'supportedIdentityProviders'}) || '';
+        const supportedProviders = this.getSupportedSocialProviders();
         return supportedProviders.includes(provider);
     }
 
@@ -610,7 +645,6 @@ export class CognitoService implements IAuthService {
         const userPoolClientId = this.getUserPoolClientId();
         const domain = this.getAuthDomain();
 
-        // Ensure we have the required configuration
         if (!domain || !userPoolClientId) {
             throw new Error('Missing required configuration: domain or userPoolClientId');
         }
@@ -640,6 +674,18 @@ export class CognitoService implements IAuthService {
 
             const tokens = await response.json();
 
+            // Pre-check: ensure Cognito user exists before proceeding
+            try {
+                // Decode the ID token to extract the Cognito username
+                const decoded = await this.verifyIdToken(tokens.id_token);
+                const username = (decoded['cognito:username'] as string) || decoded.sub;
+                const email = decoded.email;
+                // Link the social identity using the existing method; this will raise if user does not exist
+                await this.linkSocialProvider(email, username, provider);
+            } catch (e: any) {
+                throw new Error('No user found. Please sign up before using social login.');
+            }
+
             // Map the OAuth response to our expected format
             const result: SocialSignInResult = {
                 AccessToken: tokens.access_token,
@@ -648,68 +694,161 @@ export class CognitoService implements IAuthService {
                 TokenType: tokens.token_type,
                 ExpiresIn: tokens.expires_in,
                 provider,
+                isNewUser: false
             };
-
-            try {
-                // Get user details to check if this is a new user
-                const userResult = await this.identityProviderClient.send(
-                    new GetUserCommand({
-                        AccessToken: result.AccessToken,
-                    })
-                );
-
-                // Check if this is a new user by looking at the user attributes
-                result.isNewUser = userResult.UserAttributes?.some(attr => 
-                    attr.Name === 'custom:account_created' && 
-                    new Date(attr.Value!).getTime() === new Date().getTime()
-                ) ?? false;
-            } catch (error) {
-                // If we can't get user details, still return the tokens
-                console.error('Error getting user details:', error);
-            }
 
             return result;
         } catch (error: any) {
-            if (error.message === 'Body is unusable') {
-                // Return a default response for the test case
-                return {
-                    AccessToken: 'test-access-token',
-                    IdToken: 'test-id-token',
-                    RefreshToken: 'test-refresh-token',
-                    TokenType: 'Bearer',
-                    ExpiresIn: 3600,
-                    provider,
-                };
-            }
             throw new Error(`Failed to complete social sign-in: ${error.message}`);
         }
     }
 
-    async linkSocialProvider(accessToken: string, provider: SocialProvider, code: string, redirectUri: string): Promise<void> {
+    async socialSignup(provider: SocialProvider, code: string, redirectUri: string, userAttributes: Array<{ Name: string, Value: string }> = []): Promise<SocialSignInResult> {
+        const userPoolClientId = this.getUserPoolClientId();
+        const domain = this.getAuthDomain();
+
+        if (!domain || !userPoolClientId) {
+            throw new Error('Missing required configuration: domain or userPoolClientId');
+        }
+
+        // Exchange the authorization code for tokens using Cognito's OAuth endpoint
+        const tokenEndpoint = `https://${domain}/oauth2/token`;
+        const params = new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: userPoolClientId,
+            code: code,
+            redirect_uri: redirectUri,
+        });
+
+        try {
+            const response = await fetch(tokenEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString(),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Token exchange failed: ${errorText}`);
+            }
+
+            const tokens = await response.json();
+
+            // Check if user already exists
+            try {
+                // Decode the ID token to extract the Cognito username
+                const decoded = await this.verifyIdToken(tokens.id_token);
+                const username = (decoded['cognito:username'] as string) || decoded.sub;
+                // Try to get the user - if this succeeds, user already exists
+                await this.identityProviderClient.send(
+                    new AdminGetUserCommand({
+                        UserPoolId: this.getUserPoolID(),
+                        Username: username,
+                    })
+                );
+                throw new Error('User already exists. Please sign in instead.');
+            } catch (e: any) {
+                // If AdminGetUserCommand fails with UserNotFoundException, we can proceed with signup
+                if (e.name !== 'UserNotFoundException') {
+                    throw e;
+                }
+            }
+
+            // Update user attributes if provided
+            if (userAttributes.length > 0) {
+                const decoded = await this.verifyIdToken(tokens.id_token);
+                const username = (decoded['cognito:username'] as string) || decoded.sub;
+                
+                await this.identityProviderClient.send(
+                    new AdminUpdateUserAttributesCommand({
+                        UserPoolId: this.getUserPoolID(),
+                        Username: username,
+                        UserAttributes: userAttributes,
+                    })
+                );
+            }
+
+            // Map the OAuth response to our expected format
+            const result: SocialSignInResult = {
+                AccessToken: tokens.access_token,
+                IdToken: tokens.id_token,
+                RefreshToken: tokens.refresh_token,
+                TokenType: tokens.token_type,
+                ExpiresIn: tokens.expires_in,
+                provider,
+                isNewUser: true
+            };
+
+            return result;
+        } catch (error: any) {
+            throw new Error(`Failed to complete social signup: ${error.message}`);
+        }
+    }
+
+    async linkSocialProvider(email: string, username: string, provider: SocialProvider): Promise<void> {
         const userPoolId = this.getUserPoolID();
+        try {
+            const listUsersResult = await this.identityProviderClient.send(
+                new ListUsersCommand({
+                    UserPoolId: userPoolId,
+                    Filter: `email = "${email}"`,
+                    Limit: 10,
+                })
+            );
+            if (!listUsersResult.Users) {
+                throw new Error('No user found with this email');
+            }
+            // find the native user
+            const nativeUser = listUsersResult.Users.find(
+                u => u.Username && !u.Username.startsWith(provider) && u.UserStatus !== 'EXTERNAL_PROVIDER'
+            );
+            if (!nativeUser) {
+                throw new Error('No User found with this email. Please sign up before using social login.');
+            }
+            // check if the user is already linked to this provider (by federated username in identities)
+            const identitiesAttr = nativeUser.Attributes?.find(attr => attr.Name === 'identities')?.Value;
+            let alreadyLinked = false;
+            if (identitiesAttr) {
+                try {
+                    const identities = JSON.parse(identitiesAttr);
+                    alreadyLinked = Array.isArray(identities) && identities.some(
+                        (identity: any) => identity.userId === username
+                    );
+                } catch (e) {
+                    alreadyLinked = false;
+                }
+            }
+            if (alreadyLinked) {
+                this.logger.info('social provider already linked for the user', nativeUser.Username!, username, provider);
+                return;
+            }
+            this.logger.debug('linking social provider for the user', nativeUser.Username!, username, provider);
+            await this.identityProviderClient.send(
+                new AdminLinkProviderForUserCommand({
+                    UserPoolId: userPoolId,
+                    DestinationUser: {
+                        ProviderName: 'Cognito',
+                        ProviderAttributeValue: nativeUser.Username!,
+                    },
+                    SourceUser: {
+                        ProviderName: provider,
+                        ProviderAttributeName: 'Cognito_Subject',
+                        ProviderAttributeValue: username,
+                    },
+                })
+            );
+            this.logger.debug('linked social provider for the user, checking the user groups');
+            // sync the user groups for the linked user
+            const groups = await this.getUserGroupNames(nativeUser.Username!);
+            this.logger.debug('syncing user groups for the linked user', nativeUser.Username!, groups);
+            await this.setUserGroups(username, groups, false);
 
-        // First, verify the user's identity with the access token
-        const userResult = await this.identityProviderClient.send(
-            new GetUserCommand({
-                AccessToken: accessToken,
-            })
-        );
-
-        // Then initiate the linking process using the admin API
-        await this.identityProviderClient.send(
-            new AdminLinkProviderForUserCommand({
-                UserPoolId: userPoolId,
-                DestinationUser: {
-                    ProviderAttributeValue: userResult.Username!,
-                    ProviderName: 'Cognito',
-                },
-                SourceUser: {
-                    ProviderAttributeName: 'Cognito_Subject',
-                    ProviderAttributeValue: code,
-                    ProviderName: provider,
-                },
-            })
-        );
+        } catch (e: any) {
+            this.logger.error('Failed to link social provider', e);
+            throw new Error('Failed to link social provider', e);
+        }
     }
 
     async unlinkSocialProvider(accessToken: string, provider: SocialProvider): Promise<void> {

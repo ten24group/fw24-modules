@@ -59,12 +59,23 @@ export class AuthModule extends AbstractFw24Module {
         const triggerMap = new Map<UserPoolOperation | TriggerType, ArrayElement<IAuthModuleConfig[ 'triggers' ]>>();
 
         // Add auto-verify trigger if enabled
-        if (config.autoVerifyUser) {
+        if(config.autoVerifyUser || config.userPool?.socialProviders){
             const preSignupTrigger = {
                 trigger: 'PRE_SIGN_UP' as const,
                 functionProps: {
-                    entry: join(__dirname, 'functions/pre-signup-autoverify.js'),
-                    policies: []
+                    entry: join(__dirname, 'functions/pre-signup.js'),
+                    policies: [
+                        {
+                            actions: [
+                                'cognito-idp:ListUsers'
+                            ],
+                            resources: [ '*' ]
+                        }
+                    ],
+                    environmentVariables: {
+                        autoVerifyUser: config.autoVerifyUser ? 'true' : 'false',
+                        socialProviders: config.userPool?.socialProviders ? 'true' : 'false'
+                    }
                 }
             };
             triggerMap.set(preSignupTrigger.trigger, preSignupTrigger);
@@ -170,6 +181,7 @@ export class AuthModule extends AbstractFw24Module {
         policies.set(AuthModulePolicy_AllowCreateUserAuth, {
             actions: [
                 'cognito-idp:ListUsers',
+                'cognito-idp:AdminGetUser',
                 'cognito-idp:AdminCreateUser',
                 'cognito-idp:AdminDeleteUser',
                 'cognito-idp:AdminAddUserToGroup',
@@ -177,6 +189,7 @@ export class AuthModule extends AbstractFw24Module {
                 'cognito-idp:AdminResetUserPassword',
                 'cognito-idp:AdminListGroupsForUser',
                 'cognito-idp:AdminRemoveUserFromGroup',
+                'cognito-idp:AdminLinkProviderForUser',
                 'cognito-idp:AdminUpdateUserAttributes',
                 'cognito-idp:AdminSetUserMFAPreference',
             ],
