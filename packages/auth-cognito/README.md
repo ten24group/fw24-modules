@@ -718,3 +718,78 @@ Ensure your AWS credentials are properly configured with the necessary permissio
 - [AWS Cognito Documentation](https://docs.aws.amazon.com/cognito/)
 - [Framework24 Documentation](https://framework24.io)
 - [Security Best Practices](https://docs.aws.amazon.com/cognito/latest/developerguide/security-best-practices.html)
+
+## Embeddable Auth UI Widget
+
+The Auth-Cognito module can also host a fully static, embeddable authentication widget backed by AWS S3 + CloudFront. Below are the steps to enable, build, and deploy the widget.
+
+### 1. Enable the UI in your AuthModule config
+
+In your FW24 application (e.g., `app.ts`):
+
+```ts
+import { AuthModule } from '@ten24group/fw24-auth-cognito';
+import { PriceClass } from 'aws-cdk-lib/aws-cloudfront';
+import path from 'path';
+
+new AuthModule({
+  // ... existing Cognito config ...
+  ui: {
+    enabled: true,
+    buildPath: path.resolve(__dirname, '../node_modules/@ten24group/fw24-auth-cognito/dist/ui'),
+    bucketName: 'your-static-bucket-name',
+    cloudFront: {
+      priceClass: PriceClass.PRICE_CLASS_100,
+      logBucketName: 'your-cf-log-bucket', // optional
+    },
+    customDomain: {
+      domainName: 'auth.example.com',
+      certificateArn: 'arn:aws:acm:…',
+    },
+    theme: {
+      colors: { primary: '#123456', accent: '#abcdef' },
+      logoUrl: 'https://example.com/logo.png',
+      customCss: '.auth-widget { margin: auto; }',
+    },
+  },
+});
+```
+
+### 2. Build the widget assets
+
+From the root of the `@ten24group/fw24-auth-cognito` package:
+
+```bash
+npm run widget:build
+```
+
+This command will compile the React widget in `src/ui` and output the static files to `dist/ui`.
+
+### 3. Deploy the AuthModule with UI
+
+Run your usual CDK/FW24 deploy:
+
+```bash
+fw24 deploy
+```
+
+After deployment completes, note the `authWidgetUrl` output. It is the CloudFront distribution domain where your widget is hosted.
+
+### 4. Embed the widget
+
+You can embed the widget in any web application regardless of framework via an `<iframe>`:
+
+```html
+<iframe
+  src="https://<authWidgetUrl>/"
+  width="100%"
+  height="600"
+  style="border:none;"
+></iframe>
+```
+
+Alternatively, load the widget as a standalone script once we provide a script bootstrap in a future release.
+
+---
+
+This section will guide you through testing and theming your widget. For advanced usage, see the code in `src/ui`.

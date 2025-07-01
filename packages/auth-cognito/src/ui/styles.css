@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--auth-widget-spacing);
+  background: var(--auth-widget-background);
+  font-family: 'Inter', sans-serif;
+  color: var(--auth-widget-text-color);
+
+  /* Customizable variables */
+  --auth-widget-background: #f5f7fa;
+  --auth-widget-form-bg: #fff;
+  --auth-widget-radius: 8px;
+  --auth-widget-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  --auth-widget-padding: 2rem;
+  --auth-widget-spacing: 1rem;
+  --auth-widget-transition: 0.2s ease;
+  --auth-widget-input-padding: 0.75rem;
+  --auth-widget-button-hover-brightness: 1.1;
+}
+
+form {
+  background: var(--auth-widget-form-bg);
+  width: 100%;
+  max-width: 360px;
+  margin: 0;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+h2 {
+  text-align: center;
+  color: var(--auth-widget-primary);
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+button.auth-button {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--auth-widget-primary);
+  border: none;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+button.auth-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.auth-button:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+input.auth-input {
+  width: 100%;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  border: 1px solid var(--auth-widget-primary);
+  border-radius: 6px;
+  transition: border-color 0.2s ease;
+}
+
+input.auth-input:focus {
+  outline: none;
+  border-color: var(--auth-widget-accent);
+}
+
+.auth-error {
+  color: var(--auth-widget-error-color);
+  margin-top: 0.5rem;
+}
+
+.auth-links {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.auth-links a.auth-link {
+  color: var(--auth-widget-primary);
+  text-decoration: none;
+  margin: 0 0.5rem;
+}
+
+.auth-links a.auth-link:hover {
+  text-decoration: underline;
+}
+
+.auth-input-wrapper {
+  margin-bottom: 1rem;
+}
+
+.auth-input-wrapper label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--auth-widget-text-color);
+  font-weight: 500;
+} 

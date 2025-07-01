@@ -60,28 +60,49 @@ export const handler = async (event: any) => {
 
 	} else if(triggerSource === "CustomMessage_VerifyUserAttribute") {
 
-		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE }) || null;
-        emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE }) || null; 
+		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE }) || 'Verify Your Account';
+    emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE }) || `Your verification code is: ${codeParameter}`;
 
 	} else if(triggerSource === "CustomMessage_Authentication") {
+		const uiBaseUrl = resolveEnvValueFor({ key: 'uiBaseUrl' });
+		const session = event.request.session;
+		const username = event.userName;
 
-		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_AUTHENTICATE}) || null;
-        emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_AUTHENTICATE }) || null; 
+		if (!uiBaseUrl || !session || !codeParameter || !username) {
+				console.error("Missing required parameters to generate magic link.");
+				// Do not modify the event, let Cognito handle the error
+				return event;
+		}
+		
+		// Construct the magic link
+		const magicLink = `${uiBaseUrl}/magic-link-confirm?session=${session}&code=${codeParameter}&username=${username}`;
+
+		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_AUTHENTICATE}) || 'Your Magic Sign-In Link';
+		emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_AUTHENTICATE }) || `
+				<html>
+						<body>
+								<p>Hello,</p>
+								<p>Please click the link below to sign in:</p>
+								<a href="${magicLink}">Sign In</a>
+								<p>This link will expire in a few minutes.</p>
+						</body>
+				</html>
+		`;
 
 	} else if(triggerSource === "CustomMessage_SignUp") {
 
-		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_SIGN_UP }) || null;
-        emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_SIGN_UP }) || null;  
+		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_SIGN_UP }) || 'Welcome! Please Verify Your Email';
+    emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_SIGN_UP }) || null;  
 
-    } else if(triggerSource === "CustomMessage_AdminCreateUser") {
+  } else if(triggerSource === "CustomMessage_AdminCreateUser") {
 
 		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_ADMIN_CREATE_USER }) || null;
-        emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_ADMIN_CREATE_USER }) || null; 
+    emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_ADMIN_CREATE_USER }) || null; 
 
 	} else if(triggerSource === "CustomMessage_ResendCode") {
 
 		emailSubject = resolveEnvValueFor({key: CUSTOM_SUBJECT_RESEND_CODE }) || null;
-        emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_RESEND_CODE }) || null;  
+    emailMessage = resolveEnvValueFor({key: CUSTOM_MESSAGE_RESEND_CODE }) || null;  
 	}
 	
     event.response.smsMessage = emailMessage;

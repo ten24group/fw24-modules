@@ -1,9 +1,7 @@
-import { createToken } from "@ten24group/fw24";
-
-export const AuthModuleClientDIToken = createToken('AuthModuleClient'); 
+export const AuthModuleClientDIToken = 'AuthModuleClient'; 
 export const AuthModulePolicy_AllowCreateUserAuth = 'Policy:AllowCreateUserAuth';
 
-export const AuthServiceDIToken = createToken('auth-cognito:IAuthService');
+export const AuthServiceDIToken = 'auth-cognito:IAuthService';
 
 
 export const CUSTOM_MESSAGE_SIGN_UP = 'CUSTOM_MESSAGE_SIGN_UP';
@@ -26,3 +24,37 @@ export const CUSTOM_SUBJECT_UPDATE_USER_ATTRIBUTE = 'CUSTOM_SUBJECT_UPDATE_USER_
 
 export const CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE = 'CUSTOM_MESSAGE_VERIFY_USER_ATTRIBUTE';
 export const CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE = 'CUSTOM_SUBJECT_VERIFY_USER_ATTRIBUTE';
+
+// MFA method constants for UI and mapping to Cognito challenges
+export enum UIMfaMethod {
+  SMS = 'SMS',
+  TOTP = 'TOTP',
+  EMAIL = 'EMAIL',
+}
+
+export enum CognitoMfaChallenge {
+  SMS_MFA = 'SMS_MFA',
+  SOFTWARE_TOKEN_MFA = 'SOFTWARE_TOKEN_MFA',
+  SELECT_MFA_TYPE = 'SELECT_MFA_TYPE',
+}
+
+/**
+ * Maps UI MFA methods to Cognito challenge names.
+ */
+export const UIMfaToCognitoMfaChallenge: Record<
+  UIMfaMethod,
+  CognitoMfaChallenge.SMS_MFA | CognitoMfaChallenge.SOFTWARE_TOKEN_MFA
+> = {
+  [UIMfaMethod.SMS]: CognitoMfaChallenge.SMS_MFA,
+  [UIMfaMethod.TOTP]: CognitoMfaChallenge.SOFTWARE_TOKEN_MFA,
+  [UIMfaMethod.EMAIL]: CognitoMfaChallenge.SMS_MFA, // default fallback
+};
+
+// Service-level MFA method identifiers
+export type MfaMethod = 'SMS' | 'EMAIL' | 'SOFTWARE_TOKEN';
+
+// Storage key constants
+export const STORAGE_KEYS = {
+  pkceVerifier: 'pkceVerifier',
+  oauthProvider: 'oauth_provider',
+};

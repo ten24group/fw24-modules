@@ -1,5 +1,7 @@
 import type { AuthenticationResultType, ChallengeNameType, CodeDeliveryDetailsType, EmailMfaSettingsType } from "@aws-sdk/client-cognito-identity-provider";
 import type { IAuthConstructConfig } from "@ten24group/fw24";
+import type { PriceClass } from 'aws-cdk-lib/aws-cloudfront';
+import type { MfaMethod } from '../const';
 
 
 export type SignInResult = AuthenticationResultType | {
@@ -25,7 +27,7 @@ export type SignUpOptions = {
     password: string;
     email?: string;  // Optional email
     autoSignIn?: boolean;  // Optional parameter to automatically sign in after signup
-    [key: string]: any;  // Allow arbitrary string properties
+    [ key: string ]: any;  // Allow arbitrary string properties
 }
 
 export type CreateUserOptions = {
@@ -38,8 +40,6 @@ export type UpdateUserAttributeOptions = {
     username: string,
     attributes: Array<{ Name: string, Value: string }>
 }
-
-export type MfaMethod = 'EMAIL' | 'SMS' | 'SOFTWARE_TOKEN';
 
 export type UserMfaPreferenceOptions = {
     enabledMethods: MfaMethod[];
@@ -96,7 +96,7 @@ export interface DecodedIdToken {
     auth_time: number;
     exp: number;  // Token expiration time
     iat: number;  // Token issued at time
-    [key: string]: any;  // Allow for custom claims
+    [ key: string ]: any;  // Allow for custom claims
 }
 
 
@@ -125,6 +125,7 @@ export interface IAuthService {
     completeSocialSignIn(provider: SocialProvider, code: string, redirectUri: string): Promise<SocialSignInResult>;
     linkSocialProvider(accessToken: string, provider: SocialProvider, code: string, redirectUri: string): Promise<void>;
     unlinkSocialProvider(accessToken: string, provider: SocialProvider): Promise<void>;
+    respondToAuthChallenge(username: string, session: string, challengeName: string, challengeResponses: Record<string, any>): Promise<any>;
 
     // User methods
     updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void>;
@@ -231,6 +232,53 @@ export interface IAuthModuleConfig extends IAuthConstructConfig {
         },
     }
     autoVerifyUser?: boolean
+    ui?: {
+        /** Enable static hosting for the embeddable widget */
+        enabled: boolean;
+        /** S3 bucket name override */
+        bucketName?: string;
+        /** Local or absolute path to the widget build directory */
+        buildPath?: string;
+        /** CloudFront distribution settings */
+        cloudFront?: {
+            /** CloudFront Price Class (e.g. PriceClass.PRICE_CLASS_100) */
+            priceClass?: PriceClass;
+            /** Optional existing bucket name for CF logging */
+            logBucketName?: string;
+        };
+        /** Custom domain for the widget (no automatic DNS record) */
+        customDomain?: {
+            domainName: string;
+            certificateArn: string;
+        };
+        /** Base URL of the auth API (e.g. https://api.example.com/mauth) */
+        apiBaseUrl: string;
+        /** Theme and style overrides for the widget UI */
+        theme?: {
+            colors?: { primary?: string; accent?: string };
+            logoUrl?: string;
+            customCss?: string;
+            textColor?: string;
+            errorColor?: string;
+        };
+        /** Feature toggles for advanced auth flows */
+        features?: {
+            /** Enable user sign-up flow */
+            signUp?: { enabled: boolean };
+            /** Enable forgot-password flow */
+            forgotPassword?: { enabled: boolean };
+            pkce?: { enabled: boolean; redirectPath: string; scope?: string };
+            social?: {
+                enabled: boolean;
+                providers: Array<{ id: string; authorizeUrl: string; clientId: string; scope: string }>;
+                callbackPath: string;
+            };
+            passwordless?: { enabled: boolean; loginPath: string; confirmPath: string };
+            mfa?: { enabled: boolean; methods: ('SMS' | 'TOTP' | 'EMAIL')[] };
+        };
+        /** Internationalization settings */
+        i18n?: { enabled: boolean; defaultLocale: string; locales: string[] };
+    };
 }
 
 export const SOCIAL_PROVIDERS = ['Google', 'Facebook'] as const;
@@ -244,7 +292,7 @@ export type SocialSignInConfig = {
 }
 
 export type SocialSignInConfigs = {
-    [key in SocialProvider]?: SocialSignInConfig;
+    [ key in SocialProvider ]?: SocialSignInConfig;
 }
 
 export type SocialSignInResult = SignInResult & {
