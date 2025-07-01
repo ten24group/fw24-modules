@@ -6,14 +6,14 @@ import Button from '../ui/Button';
 import { useTranslation } from 'react-i18next';
 
 interface LocationState {
-  username: string;
+  email: string;
 }
 
 const ConfirmSignUpPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
-  const username = state?.username || '';
+  const email = state?.email || '';
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,7 @@ const ConfirmSignUpPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await confirmSignUp(username, code);
+      await confirmSignUp(email, code);
       navigate('/signin');
     } catch (err: any) {
       setError(err.message);
@@ -37,7 +37,7 @@ const ConfirmSignUpPage: React.FC = () => {
     <form onSubmit={handleSubmit}>
       <h2>{t('confirmSignUp.title')}</h2>
       <p>{t('confirmSignUp.prompt')}</p>
-      <TextInput label={t('confirmSignUp.codeLabel')} value={code} onChange={e => setCode(e.target.value)} placeholder="Verification code" />
+      <TextInput label={t('confirmSignUp.codeLabel')} value={code} onChange={e => setCode(e.target.value)} placeholder={t('confirmSignUp.codeLabel')} />
       <Button type="submit" loading={loading}>{t('confirmSignUp.button')}</Button>
       {error && <div className="auth-error">{error}</div>}
       <div className="auth-links">

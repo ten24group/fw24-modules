@@ -1,6 +1,7 @@
 import type { AuthenticationResultType, ChallengeNameType, CodeDeliveryDetailsType, EmailMfaSettingsType } from "@aws-sdk/client-cognito-identity-provider";
 import type { IAuthConstructConfig } from "@ten24group/fw24";
 import type { PriceClass } from 'aws-cdk-lib/aws-cloudfront';
+import type { MfaMethod } from '../const';
 
 
 export type SignInResult = AuthenticationResultType | {
@@ -39,8 +40,6 @@ export type UpdateUserAttributeOptions = {
     username: string,
     attributes: Array<{ Name: string, Value: string }>
 }
-
-export type MfaMethod = 'EMAIL' | 'SMS' | 'SOFTWARE_TOKEN';
 
 export type UserMfaPreferenceOptions = {
     enabledMethods: MfaMethod[];
@@ -259,9 +258,15 @@ export interface IAuthModuleConfig extends IAuthConstructConfig {
             colors?: { primary?: string; accent?: string };
             logoUrl?: string;
             customCss?: string;
+            textColor?: string;
+            errorColor?: string;
         };
         /** Feature toggles for advanced auth flows */
         features?: {
+            /** Enable user sign-up flow */
+            signUp?: { enabled: boolean };
+            /** Enable forgot-password flow */
+            forgotPassword?: { enabled: boolean };
             pkce?: { enabled: boolean; redirectPath: string; scope?: string };
             social?: {
                 enabled: boolean;

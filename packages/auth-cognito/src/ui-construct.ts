@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Bucket, HttpMethods, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { Distribution, ViewerProtocolPolicy, PriceClass } from 'aws-cdk-lib/aws-cloudfront';
 import { S3StaticWebsiteOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -8,6 +8,7 @@ import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { FW24Construct, FW24ConstructOutput, OutputType } from '@ten24group/fw24';
 import { Fw24 } from '@ten24group/fw24';
 import type { IAuthModuleConfig } from './interfaces';
+import { CfnOutput } from 'aws-cdk-lib';
 
 /**
  * Spins up S3 + CloudFront to host a pre-built auth widget bundle.
@@ -31,9 +32,17 @@ export class AuthUIConstruct implements FW24Construct {
       bucketName: config.bucketName,
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'index.html',
-      publicReadAccess: true,
       removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      autoDeleteObjects: true, // Delete all objects when the bucket is deleted
+      publicReadAccess: true, // Make the bucket public
+      blockPublicAccess: BlockPublicAccess.BLOCK_ACLS,
+      cors: [
+        {
+          allowedOrigins: [ "*" ],
+          allowedHeaders: [ "*" ],
+          allowedMethods: [ HttpMethods.GET ],
+        },
+      ],
     });
 
     // Optional CloudFront access logs bucket
@@ -75,15 +84,18 @@ export class AuthUIConstruct implements FW24Construct {
           features: config.features,
           i18n: config.i18n,
         }),
-        // copy our dev index.html for defaultRootObject
-        Source.asset(path.resolve(__dirname, 'src/ui/index.html')),
       ],
       destinationBucket: bucket,
       distribution,
       distributionPaths: [ '/*' ],
     });
 
-    // Export the widget URL
-    this.fw24.setConstructOutput(this, 'authWidgetUrl', distribution.distributionDomainName, OutputType.ENDPOINT);
+    // Export the widget URL via Fw24
+    this.fw24.setConstructOutput(this, 'authWidgetUrl', distribution, OutputType.ENDPOINT, 'distributionDomainName');
+    // Explicit CloudFormation output for widget URL
+    new CfnOutput(this.mainStack, 'authWidgetUrl', {
+      value: distribution.distributionDomainName,
+      exportName: `${this.mainStack.stackName}-authWidgetUrl`,
+    });
   }
 } 

@@ -1,9 +1,10 @@
 {
   "signIn": {
     "title": "Sign In",
-    "userLabel": "Username or Email",
+    "emailLabel": "Username or Email",
     "passwordLabel": "Password",
     "button": "Sign In",
+    "loading": "Loading...",
     "forgotPasswordLink": "Forgot Password",
     "signUpLink": "Sign Up",
     "or": "or",
@@ -14,8 +15,12 @@
     "usernameLabel": "Username",
     "emailLabel": "Email",
     "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm Password",
     "button": "Sign Up",
-    "backLink": "Back to Sign In"
+    "backLink": "Back to Sign In",
+    "errors": {
+      "passwordMismatch": "Passwords do not match"
+    }
   },
   "confirmSignUp": {
     "title": "Confirm Sign Up",
@@ -26,6 +31,8 @@
   },
   "forgotPassword": {
     "title": "Forgot Password",
+    "emailLabel": "Email",
+    "backToSignInLink": "Back to Sign In",
     "prompt": "Enter your username or email to receive a reset code.",
     "button": "Send Code"
   },
@@ -34,6 +41,13 @@
     "codeLabel": "Verification Code",
     "newPasswordLabel": "New Password",
     "button": "Reset Password"
+  },
+  "setNewPassword": {
+    "title": "Set New Password",
+    "newPasswordLabel": "New Password",
+    "confirmPasswordLabel": "Confirm New Password",
+    "button": "Set Password",
+    "cancelLink": "Cancel"
   },
   "mfa": {
     "title": "Enter MFA Code",
@@ -46,12 +60,14 @@
     "title": "Choose MFA Method",
     "prompt": "How would you like to receive your code?",
     "smsButton": "Send SMS",
+    "emailButton": "Send Email",
     "totpButton": "Use Authenticator App"
   },
   "magicLinkRequest": {
     "title": "Passwordless Sign-In",
     "prompt": "Enter your email to receive a magic link.",
     "emailLabel": "Email",
+    "placeholder": "Enter your email e.g. john.doe@example.com",
     "button": "Send Link"
   },
   "magicLinkConfirm": {
@@ -60,7 +76,9 @@
   },
   "oauthCallback": {
     "title": "Authenticating...",
-    "prompt": "Finalizing authentication. Please wait."
+    "prompt": "Finalizing authentication. Please wait.",
+    "missingCode": "Authentication code is missing.",
+    "unexpectedChallenge": "An unexpected authentication challenge was encountered."
   },
   "social": {
     "signInWith": "Sign in with {{provider}}"

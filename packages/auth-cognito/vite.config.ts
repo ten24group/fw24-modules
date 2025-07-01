@@ -6,14 +6,19 @@ export default defineConfig({
   root: path.resolve(process.cwd(), 'src/ui'),
   base: './',
   build: {
-    lib: {
-      entry: path.resolve(process.cwd(), 'src/ui/index.tsx'),
-      name: 'AuthWidget',
-      fileName: () => 'widget',
-      formats: [ 'iife' ],
-    },
     outDir: path.resolve(process.cwd(), 'dist/ui'),
     emptyOutDir: true,
+    cssCodeSplit: false,
+    rollupOptions: {
+      input: path.resolve(process.cwd(), 'src/ui/index.html'),
+      output: {
+        entryFileNames: 'widget.js',
+        assetFileNames: ({ name }) => {
+          if (name && name.endsWith('.css')) return 'style.css';
+          return name || '[name][extname]';
+        }
+      }
+    }
   },
-  plugins: [ react() ],
+  plugins: [react()],
 }); 

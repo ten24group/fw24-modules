@@ -6,14 +6,14 @@ import Button from '../ui/Button';
 import { useTranslation } from 'react-i18next';
 
 interface LocationState {
-  username: string;
+  email: string;
 }
 
 const ConfirmForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
-  const username = state?.username || '';
+  const email = state?.email || '';
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ const ConfirmForgotPasswordPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await confirmForgotPassword(username, code, newPassword);
+      await confirmForgotPassword(email, code, newPassword);
       navigate('/signin');
     } catch (err: any) {
       setError(err.message);
@@ -37,8 +37,8 @@ const ConfirmForgotPasswordPage: React.FC = () => {
   return (
     <form onSubmit={handleSubmit}>
       <h2>{t('confirmForgotPassword.title')}</h2>
-      <TextInput label={t('confirmForgotPassword.codeLabel')} value={code} onChange={e => setCode(e.target.value)} placeholder="Verification code" />
-      <TextInput label={t('confirmForgotPassword.newPasswordLabel')} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password" />
+      <TextInput label={t('confirmForgotPassword.codeLabel')} value={code} onChange={e => setCode(e.target.value)} placeholder={t('confirmForgotPassword.codeLabel')} />
+      <TextInput label={t('confirmForgotPassword.newPasswordLabel')} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder={t('confirmForgotPassword.newPasswordLabel')} />
       <Button type="submit" loading={loading}>{t('confirmForgotPassword.button')}</Button>
       {error && <div className="auth-error">{error}</div>}
       <div className="auth-links">

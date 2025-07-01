@@ -11,5 +11,5 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true
   },
-  "include": ["**/*", "config.json"]
+  "include": ["**/*", "config.json", "../default-ui-config.ts"]
 } 

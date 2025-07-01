@@ -1,27 +1,34 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import config from './config.json';
+import { loadUIConfig, getUIConfig } from './runtime-config';
+import { initializeI18n } from './i18n';
 import baseStyles from './styles.css?inline';
-import './i18n'; // initialize i18next
+import { emitEvent, Events } from './services/event-bus';
 
 // Custom element to embed the Auth Widget
 class AuthWidget extends HTMLElement {
   private rootEl!: HTMLDivElement;
 
-  connectedCallback() {
+  async connectedCallback() {
+    // Load runtime config and initialize translations
+    await loadUIConfig();
+    await initializeI18n();
+    const cfg = getUIConfig();
     const shadow = this.attachShadow({ mode: 'open' });
     
     // CSS and theme injection
     const varStyle = document.createElement('style');
-    const theme = (config as any).theme || {};
+    const theme = (cfg.theme || {});
     const colors = theme.colors || {};
+    const textColor = theme.textColor || '#333';
+    const errorColor = theme.errorColor || 'red';
     varStyle.textContent = `
       :host {
         --auth-widget-primary: ${colors.primary || '#0050EF'};
         --auth-widget-accent: ${colors.accent || '#FF4081'};
-        --auth-widget-text-color: ${theme.textColor || '#333'};
-        --auth-widget-error-color: ${theme.errorColor || 'red'};
+        --auth-widget-text-color: ${textColor};
+        --auth-widget-error-color: ${errorColor};
       }
     `;
     shadow.appendChild(varStyle);
@@ -48,7 +55,10 @@ class AuthWidget extends HTMLElement {
     this.rootEl = document.createElement('div');
     shadow.appendChild(this.rootEl);
     const root = ReactDOM.createRoot(this.rootEl);
-    root.render(<App />);
+    // Pass runtime config into App
+    root.render(<App config={cfg} />);
+
+    emitEvent(Events.WidgetReady);
   }
 }
 

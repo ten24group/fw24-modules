@@ -43,7 +43,7 @@ const MagicLinkRequestPage: React.FC = () => {
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="your@email.com"
+        placeholder={t('magicLinkRequest.placeholder')}
         required
       />
       <Button type="submit" loading={loading}>{t('magicLinkRequest.button')}</Button>

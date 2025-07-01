@@ -6,9 +6,9 @@ import Button from '../ui/Button';
 import { useTranslation } from 'react-i18next';
 
 const SignUpPage: React.FC = () => {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -18,10 +18,15 @@ const SignUpPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    if (password !== confirmPassword) {
+      setError(t('signUp.error.passwordMismatch'));
+      setLoading(false);
+      return;
+    }
     try {
-      const response = await signUp({ username, email, password });
+      const response = await signUp({ username: email, email, password });
       if (response.UserConfirmed === false || response.session) {
-        navigate('/confirm-signup', { state: { username: username || email } });
+        navigate('/confirm-signup', { state: { email } });
       } else {
         navigate('/signin');
       }
@@ -35,9 +40,9 @@ const SignUpPage: React.FC = () => {
   return (
     <form onSubmit={handleSubmit}>
       <h2>{t('signUp.title')}</h2>
-      <TextInput label={t('signUp.usernameLabel')} value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
-      <TextInput label={t('signUp.emailLabel')} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
-      <TextInput label={t('signUp.passwordLabel')} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" />
+      <TextInput label={t('signUp.emailLabel')} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('signUp.emailLabel')} />
+      <TextInput label={t('signUp.passwordLabel')} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('signUp.passwordLabel')} />
+      <TextInput label={t('signUp.confirmPasswordLabel')} type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t('signUp.confirmPasswordLabel')} />
       <Button type="submit" loading={loading}>{t('signUp.button')}</Button>
       {error && <div className="auth-error">{error}</div>}
       <div className="auth-links">

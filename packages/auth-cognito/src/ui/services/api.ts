@@ -1,8 +1,24 @@
 // @ts-nocheck: using JSON import for runtime-injected config
-import config from '../config.json';
+import { getUIConfig } from '../runtime-config';
+import { CognitoMfaChallenge } from '../../const';
 
-// Allow overriding API base URL in development via VITE_API_BASE_URL
-const baseUrl = (import.meta.env.VITE_API_BASE_URL as string) || (config.apiBaseUrl as string);
+
+// Centralized API endpoint paths
+export const API_PATHS = {
+  signIn: '/signin',
+  signUp: '/signup',
+  confirmSignUp: '/verify',
+  resendConfirmationCode: '/resendVerificationCode',
+  forgotPassword: '/forgotPassword',
+  confirmForgotPassword: '/confirmForgotPassword',
+  setNewPassword: '/setNewPassword',
+  signOut: '/signout',
+  refreshToken: '/refreshToken',
+  respondToAuthChallenge: '/respondToAuthChallenge',
+  initiateAuth: '/initiateAuth',
+  initiateSocialSignIn: '/initiateSocialSignIn',
+  completeSocialSignIn: '/completeSocialSignIn',
+};
 
 // ===== TYPES =====
 export interface Tokens {
@@ -40,6 +56,9 @@ export interface SignUpResponse {
 
 // ===== HELPERS =====
 async function callApi<T>(path: string, body: object): Promise<T> {
+  // Determine base URL from runtime config
+  const cfg = getUIConfig();
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL as string) || cfg.apiBaseUrl;
   const res = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -61,45 +80,44 @@ async function callApi<T>(path: string, body: object): Promise<T> {
 
 // --- Core Auth ---
 export function signIn(params: { username?: string; email?: string; password: string }): Promise<SignInResponse> {
-  return callApi<SignInResponse>('/signin', params);
+  return callApi<SignInResponse>(API_PATHS.signIn, params);
 }
 
 export function signUp(params: SignUpParams): Promise<SignUpResponse> {
-  return callApi<SignUpResponse>('/signup', params);
+  return callApi<SignUpResponse>(API_PATHS.signUp, params);
 }
 
 export function confirmSignUp(identifier: string, code: string): Promise<void> {
-  // Backend expects email for verification, using identifier as email
-  return callApi<void>('/verify', { email: identifier, code });
+  return callApi<void>(API_PATHS.confirmSignUp, { email: identifier, code });
 }
 
 export function resendConfirmationCode(identifier: string): Promise<void> {
-  return callApi<void>('/resendVerificationCode', { username: identifier });
+  return callApi<void>(API_PATHS.resendConfirmationCode, { username: identifier });
 }
 
 export function forgotPassword(identifier: string): Promise<void> {
-  return callApi<void>('/forgotPassword', { username: identifier });
+  return callApi<void>(API_PATHS.forgotPassword, { username: identifier });
 }
 
 export function confirmForgotPassword(identifier: string, code: string, newPassword: string): Promise<void> {
-  return callApi<void>('/confirmForgotPassword', { username: identifier, code, newPassword });
+  return callApi<void>(API_PATHS.confirmForgotPassword, { username: identifier, code, newPassword });
 }
 
 export function setNewPassword(username: string, session: string, newPassword: string): Promise<SignInResponse> {
-  return callApi<SignInResponse>('/setNewPassword', { username, session, newPassword });
+  return callApi<SignInResponse>(API_PATHS.setNewPassword, { username, session, newPassword });
 }
 
 export function signOut(accessToken: string): Promise<void> {
-  return callApi<void>('/signout', { accessToken });
+  return callApi<void>(API_PATHS.signOut, { accessToken });
 }
 
 export function refreshToken(refreshTokenValue: string): Promise<Tokens> {
-  return callApi<Tokens>('/refreshToken', { refreshToken: refreshTokenValue });
+  return callApi<Tokens>(API_PATHS.refreshToken, { refreshToken: refreshTokenValue });
 }
 
 // --- Generic Challenge Responder ---
 function respondToAuthChallenge(username: string, session: string, challengeName: string, challengeResponses: Record<string, any>): Promise<SignInResponse> {
-    return callApi<SignInResponse>('/respondToAuthChallenge', {
+    return callApi<SignInResponse>(API_PATHS.respondToAuthChallenge, {
         username,
         session,
         challengeName,
@@ -109,8 +127,7 @@ function respondToAuthChallenge(username: string, session: string, challengeName
 
 // --- Magic Link ---
 export function sendMagicLink(email: string): Promise<Challenge> {
-  // initiateAuth for CUSTOM_AUTH flow returns a Challenge
-  return callApi<Challenge>('/initiateAuth', { username: email, authFlow: 'CUSTOM_AUTH' });
+  return callApi<Challenge>(API_PATHS.initiateAuth, { username: email, authFlow: 'CUSTOM_AUTH' });
 }
 
 export function verifyMagicLink(username: string, session: string, code: string): Promise<SignInResponse> {
@@ -121,31 +138,39 @@ export function verifyMagicLink(username: string, session: string, code: string)
 }
 
 // --- Enhanced MFA ---
-export function selectMfaMethod(username: string, session: string, mfaMethod: 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA'): Promise<Challenge> {
-  return callApi<Challenge>('/respondToAuthChallenge', {
+export function selectMfaMethod(
+  username: string,
+  session: string,
+  mfaMethod: CognitoMfaChallenge.SMS_MFA | CognitoMfaChallenge.SOFTWARE_TOKEN_MFA
+): Promise<Challenge> {
+  return callApi<Challenge>(API_PATHS.respondToAuthChallenge, {
     username,
     session,
-    challengeName: 'SELECT_MFA_TYPE',
+    challengeName: CognitoMfaChallenge.SELECT_MFA_TYPE,
     challengeResponses: {
       ANSWER: mfaMethod,
     },
   });
 }
 
-export function respondToMfaChallenge(username: string, session: string, code: string, mfaType: 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA'): Promise<SignInResponse> {
+export function respondToMfaChallenge(
+  username: string,
+  session: string,
+  code: string,
+  mfaType: CognitoMfaChallenge.SMS_MFA | CognitoMfaChallenge.SOFTWARE_TOKEN_MFA
+): Promise<SignInResponse> {
     return respondToAuthChallenge(username, session, mfaType, {
         USERNAME: username,
-        [mfaType === 'SMS_MFA' ? 'SMS_MFA_CODE' : 'SOFTWARE_TOKEN_MFA_CODE']: code,
+        [mfaType === CognitoMfaChallenge.SMS_MFA ? 'SMS_MFA_CODE' : 'SOFTWARE_TOKEN_MFA_CODE']: code,
     });
 }
 
-
 // --- Social Sign In ---
 export async function initiateSocialSignIn(provider: string, redirectUri: string): Promise<void> {
-  const { authorizationUrl } = await callApi<{ authorizationUrl: string }>('/initiateSocialSignIn', { provider, redirectUri });
+  const { authorizationUrl } = await callApi<{ authorizationUrl: string }>(API_PATHS.initiateSocialSignIn, { provider, redirectUri });
   window.location.href = authorizationUrl;
 }
 
 export function completeSocialSignIn(provider: string, code: string, redirectUri: string): Promise<SignInResponse> {
-  return callApi<SignInResponse>('/completeSocialSignIn', { provider, code, redirectUri });
+  return callApi<SignInResponse>(API_PATHS.completeSocialSignIn, { provider, code, redirectUri });
 } 

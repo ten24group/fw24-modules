@@ -1,8 +1,8 @@
-import { AuthModule } from './../index';
-import { Controller, APIController, Request, Response, Post, Authorizer, InputValidationRule, Inject, Get, resolveEnvValueFor, toHumanReadableName } from '@ten24group/fw24';
+import { APIController, Authorizer, Controller, Get, Inject, InputValidationRule, Post, Request, resolveEnvValueFor, Response, toHumanReadableName } from '@ten24group/fw24';
+import { AuthModuleDIModule } from './../index';
 
-import { IAuthService, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider } from '../interfaces';
 import { AuthServiceDIToken } from '../const';
+import { AdminMfaSettings, IAuthService, SocialProvider, UserMfaPreferenceOptions } from '../interfaces';
 
 type SignUpRequest = {
     username?: string;
@@ -68,8 +68,17 @@ const signInValidations: InputValidationRule<SignInRequest> = {
             resources: ['*']
         }
     ],
+    functionProps: {
+        bundling: {
+            externalModules: [
+                '@aws-sdk',
+                'aws-cdk-lib',
+                '@ten24group/fw24'
+            ]
+        },
+    },
     module: {
-        providedBy: AuthModule
+        providedBy: AuthModuleDIModule
     }
 })
 export class AuthController extends APIController {

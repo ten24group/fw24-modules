@@ -2,19 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { selectMfaMethod, respondToMfaChallenge, Challenge, SignInResponse } from '../../services/api';
+import { getUIConfig } from '../../runtime-config';
+import type { UIConfig } from '../../types';
+import { UIMfaMethod, CognitoMfaChallenge, UIMfaToCognitoMfaChallenge } from '../../../const';
 import TextInput from '../ui/TextInput';
 import Button from '../ui/Button';
 
-// @ts-ignore: using JSON import for runtime-injected config
-import config from '../../config.json';
+// Type for MFA methods from UI features (always present due to defaults)
+type UIFeatureMfaMethod = UIMfaMethod;
 
 interface LocationState {
-  username: string;
+  email: string;
   session: string;
   challengeName?: string; // This can be SELECT_MFA_TYPE or a specific MFA challenge
 }
-
-type MfaMethod = 'SMS_MFA' | 'SOFTWARE_TOKEN_MFA';
 
 const MfaPage: React.FC = () => {
     const navigate = useNavigate();
@@ -26,15 +27,17 @@ const MfaPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const isSelectMfa = state.challengeName === 'SELECT_MFA_TYPE';
-    const availableMethods: MfaMethod[] = (config.features?.mfa?.methods || []) as MfaMethod[];
+    const isSelectMfa = state.challengeName === CognitoMfaChallenge.SELECT_MFA_TYPE;
+    // UI feature methods are guaranteed by the deployed config defaults
+    const availableMethods: UIFeatureMfaMethod[] = getUIConfig().features!.mfa!.methods as UIFeatureMfaMethod[];
 
-    const handleMethodSelect = async (method: MfaMethod) => {
+    const handleMethodSelect = async (method: UIFeatureMfaMethod) => {
         setError(null);
         setLoading(true);
         try {
-            // Call API to inform Cognito of the selected MFA method
-            const newChallenge = await selectMfaMethod(state.username, state.session, method);
+            // Map UI method to Cognito challenge name via shared constants
+            const challengeName = UIMfaToCognitoMfaChallenge[method];
+            const newChallenge = await selectMfaMethod(state.email, state.session, challengeName);
             // Update session state with the new challenge details (e.g., SMS_MFA)
             setSessionState({
                 ...state,
@@ -56,11 +59,14 @@ const MfaPage: React.FC = () => {
         setError(null);
         setLoading(true);
         try {
+            const mfaType = state.challengeName! as
+              | CognitoMfaChallenge.SMS_MFA
+              | CognitoMfaChallenge.SOFTWARE_TOKEN_MFA;
             const response = await respondToMfaChallenge(
-                state.username,
+                state.email,
                 state.session,
                 code,
-                state.challengeName as MfaMethod // We now have the specific MFA type
+                mfaType
             );
             
             if ('IdToken' in response) {
@@ -90,8 +96,8 @@ const MfaPage: React.FC = () => {
                 <p>{t('mfaSelect.prompt')}</p>
                 {error && <p className="error-message">{error}</p>}
                 {availableMethods.map(method => (
-                    <Button key={method} onClick={() => handleMethodSelect(method as MfaMethod)} disabled={loading}>
-                        {t(`mfaSelect.${method.toLowerCase()}`)}
+                    <Button key={method} onClick={() => handleMethodSelect(method)} disabled={loading}>
+                        {t(`mfaSelect.${method.toLowerCase()}Button`)}
                     </Button>
                 ))}
             </div>
@@ -111,10 +117,10 @@ const MfaPage: React.FC = () => {
                     required
                 />
                 <Button type="submit" disabled={loading}>
-                    {loading ? t('signIn.loading') : t('mfa.submitButton')}
+                    {loading ? t('signIn.loading') : t('mfa.button')}
                 </Button>
-                <div className="links">
-                    <Link to="/signin">{t('mfa.cancelLink')}</Link>
+                <div className="auth-links">
+                    <Link to="/signin" className="auth-link">{t('mfa.cancelLink')}</Link>
                 </div>
             </form>
         </div>
