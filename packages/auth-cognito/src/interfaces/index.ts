@@ -102,6 +102,7 @@ export interface DecodedIdToken {
 
 export interface IAuthService {
     getUser(usernameOrEmail: string): Promise<UserDetails>;
+    getCurrentUser(accessToken: string): Promise<UserDetails>;
     signup(options: SignUpOptions): Promise<SignInResult | SignUpResult>;
     signin(username: string, password: string): Promise<SignInResult>;
     signout(accessToken: string): Promise<void>;
@@ -127,6 +128,7 @@ export interface IAuthService {
     unlinkSocialProvider(accessToken: string, provider: SocialProvider): Promise<void>;
     // User methods
     updateUserMfaPreference(accessToken: string, mfaPreference: UserMfaPreferenceOptions): Promise<void>;
+    getUserMfaPreference(accessToken: string): Promise<UserMfaPreferenceOptions>;
 
     // Admin methods
     createUser(options: CreateUserOptions): Promise<UserDetails>;

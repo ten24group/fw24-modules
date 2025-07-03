@@ -1,6 +1,6 @@
 import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDeleteUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken, SignUpResult, SOCIAL_PROVIDERS } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken, SignUpResult, SOCIAL_PROVIDERS, MfaMethod } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { createLogger, ILogger, resolveEnvValueFor } from "@ten24group/fw24";
 
@@ -487,6 +487,51 @@ export class CognitoService implements IAuthService {
         );  
     }
 
+    async getUserMfaPreference(accessToken: string): Promise<UserMfaPreferenceOptions> {
+        try {
+            const result = await this.identityProviderClient.send(
+                new GetUserCommand({
+                    AccessToken: accessToken,
+                })
+            );
+
+            const enabledMethods: Array<MfaMethod> = [];
+            let preferredMethod: MfaMethod | undefined = undefined;
+
+            // Check MFA preferences from user attributes
+            const mfaOptions = result.MFAOptions || [];
+            
+            for (const option of mfaOptions) {
+                if (option.DeliveryMedium === 'EMAIL') {
+                    enabledMethods.push('EMAIL');
+                    if (!preferredMethod) preferredMethod = 'EMAIL';
+                } else if (option.DeliveryMedium === 'SMS') {
+                    enabledMethods.push('SMS');
+                    if (!preferredMethod) preferredMethod = 'SMS';
+                }
+            }
+
+            // Check for software token MFA (TOTP)
+            // This requires checking if user has software token devices
+            const userAttributes = result.UserAttributes || [];
+            const hasSoftwareToken = userAttributes.some(attr => 
+                attr.Name === 'software_token_mfa_settings' && attr.Value === 'enabled'
+            );
+            
+            if (hasSoftwareToken) {
+                enabledMethods.push('SOFTWARE_TOKEN');
+                if (!preferredMethod) preferredMethod = 'SOFTWARE_TOKEN';
+            }
+
+            return {
+                enabledMethods,
+                preferredMethod: preferredMethod
+            };
+        } catch (error: any) {
+            throw new Error(`Failed to get MFA preferences: ${error.message}`);
+        }
+    }
+
     async setUserMfaSettings(settings: AdminMfaSettings): Promise<void> {
         const { username, enabledMethods, preferredMethod } = settings;
         
@@ -956,6 +1001,29 @@ export class CognitoService implements IAuthService {
                 };
             }
             throw error;
+        }
+    }
+
+    async getCurrentUser(accessToken: string): Promise<UserDetails> {
+        try {
+            const result = await this.identityProviderClient.send(
+                new GetUserCommand({
+                    AccessToken: accessToken,
+                })
+            );
+
+            return {
+                Username: result.Username!,
+                email: result.UserAttributes?.find(attr => attr.Name === 'email')?.Value,
+                Enabled: true, // GetUser only returns data for enabled users
+                UserStatus: 'CONFIRMED', // Users with valid access tokens are confirmed
+                Attributes: result.UserAttributes?.map(attr => ({
+                    Name: attr.Name || '',
+                    Value: attr.Value || ''
+                })),
+            };
+        } catch (error: any) {
+            throw new Error(`Failed to get current user: ${error.message}`);
         }
     }
 
