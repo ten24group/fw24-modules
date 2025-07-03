@@ -518,7 +518,9 @@ export class CognitoService implements IAuthService {
         });
 
         try {
-            const payload = await jwtVerifier.verify(idToken);
+            const payload = await jwtVerifier.verify(idToken, {
+                clientId: this.getUserPoolClientId(),
+            });
             return payload as unknown as DecodedIdToken;
         } catch (error: unknown) {
             if (error instanceof Error) {
@@ -537,7 +539,9 @@ export class CognitoService implements IAuthService {
         });
 
         try {
-            await jwtVerifier.verify(idToken);
+            await jwtVerifier.verify(idToken, {
+                clientId: this.getUserPoolClientId(),
+            });
         } catch (e) {
             throw new Error(`Invalid ID-Token: ${e}`);
         }
@@ -954,4 +958,5 @@ export class CognitoService implements IAuthService {
             throw error;
         }
     }
+
 }

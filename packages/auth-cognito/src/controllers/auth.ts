@@ -699,7 +699,7 @@ export class AuthController extends APIController {
     @Authorizer({ type: 'AWS_IAM', requireRouteInGroupConfig: true })
     @Get('/group-options')
     getGroupOptions(req: Request, res: Response): Response {
-        const groups = resolveEnvValueFor({key: 'authGroups'}) || '';
+        const groups: string = resolveEnvValueFor({key: 'authGroups'}) || '';
         const groupOptions = groups.split(',').map(group => ({
             label: toHumanReadableName(group),
             value: group
