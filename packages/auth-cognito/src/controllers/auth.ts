@@ -1248,4 +1248,31 @@ export class AuthController extends APIController {
             });
         }
     }
+
+    /**
+     * Verify a JWT token.
+     *
+     * @param {Request} req - The request object.
+     * @param {Response} res - The response object.
+     * @returns {Response} - The response.
+     */
+    @Post('/verify-token', {
+        validations: {
+            token: { required: true },
+            type: { required: true }
+        }
+    })
+    async verifyToken(req: Request, res: Response) {
+        const { token, type } = req.body as { token: string; type: 'id' | 'access' };
+
+        try {
+            const payload = await this.authService.verifyToken(token, type);
+            return res.json({ valid: true, payload });
+        } catch (error: any) {
+            return res.json({
+                valid: false,
+                message: error.message
+            });
+        }
+    }
 }

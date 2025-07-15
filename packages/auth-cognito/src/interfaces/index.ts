@@ -1,5 +1,6 @@
 import type { AuthenticationResultType, ChallengeNameType, CodeDeliveryDetailsType, EmailMfaSettingsType } from "@aws-sdk/client-cognito-identity-provider";
 import type { IAuthConstructConfig } from "@ten24group/fw24";
+import { CognitoJwtPayload } from "aws-jwt-verify/jwt-model";
 
 
 export type SignInResult = AuthenticationResultType | {
@@ -60,46 +61,6 @@ export type UserDetails = {
     Attributes?: Array<{ Name: string, Value: string }>;
 }
 
-/**
- * Interface representing a decoded Cognito ID token.
- * 
- * Example decoded payload:
- * ```json
- * {
- *   "sub": "12345678-1234-1234-1234-123456789012",  // Unique identifier for the user
- *   "email_verified": true,
- *   "iss": "https://cognito-idp.region.amazonaws.com/userPoolId",  // Token issuer
- *   "phone_number_verified": false,
- *   "cognito:username": "johndoe",
- *   "aud": "clientId",  // Your app's client ID
- *   "event_id": "12345678-1234-1234-1234-123456789012",
- *   "token_use": "id",
- *   "auth_time": 1678901234,
- *   "exp": 1678904834,  // Token expiration timestamp
- *   "iat": 1678901234,  // Token issued at timestamp
- *   "email": "john.doe@example.com",
- *   "custom:company": "Acme Corp",  // Custom attribute
- *   "custom:role": "admin",         // Custom attribute
- *   "custom:userId": "user123"      // Custom attribute
- * }
- * ```
- */
-export interface DecodedIdToken {
-    sub: string;  // The unique identifier for the user
-    email_verified: boolean;
-    iss: string;  // The issuer of the token
-    phone_number_verified: boolean;
-    'cognito:username': string;  // Cognito username
-    aud: string;  // The audience (client ID)
-    event_id: string;
-    token_use: string;
-    auth_time: number;
-    exp: number;  // Token expiration time
-    iat: number;  // Token issued at time
-    [key: string]: any;  // Allow for custom claims
-}
-
-
 export interface IAuthService {
     getUser(usernameOrEmail: string): Promise<UserDetails>;
     getCurrentUser(accessToken: string): Promise<UserDetails>;
@@ -111,7 +72,7 @@ export interface IAuthService {
     getUserAttributeVerificationCode(accessToken: string, attributeName: string): Promise<void>;
     resendVerificationCode(username: string): Promise<any>;
     getCredentials(idToken: string): Promise<any>;
-    verifyIdToken(idToken: string): Promise<DecodedIdToken>;
+    verifyToken(idToken: string, type: 'id' | 'access'): Promise<CognitoJwtPayload>;
     changePassword(accessToken: string, newPassword: string, oldPassword?: string): Promise<void>;
     forgotPassword(username: string): Promise<any>;
     confirmForgotPassword(username: string, code: string, newPassword: string): Promise<void>;
@@ -196,8 +157,7 @@ export interface IAuthModuleClient {
     resetUserPassword(options: ResetUserPasswordOptions): Promise<void>;
     updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void>;
     deleteUser(username: string): Promise<void>;
-    verifyIdToken(idToken: string): Promise<DecodedIdToken>;
-
+    verifyToken(idToken: string, type: 'id' | 'access'): Promise<CognitoJwtPayload>;
 }
 
 export interface IAuthModuleConfig extends IAuthConstructConfig {
