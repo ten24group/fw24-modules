@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.4](https://github.com/ten24group/fw24-modules/compare/v1.0.3...v1.0.4) (2025-07-21)
+
+
+### Bug Fixes
+
+* get user-mfa-prefs API ([4c71e87](https://github.com/ten24group/fw24-modules/commit/4c71e876e765a9e18c616048407642e078ef1375))
+* verify-toke api route ([b32b569](https://github.com/ten24group/fw24-modules/commit/b32b5698374cf34d5cf339b1900c57bae3ff7d02))
+
 ### [1.0.3](https://github.com/ten24group/fw24-modules/compare/v1.0.2...v1.0.3) (2025-07-03)
 
 ### [1.0.2](https://github.com/ten24group/fw24-modules/compare/v1.0.1...v1.0.2) (2025-07-03)
