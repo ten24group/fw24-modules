@@ -1,7 +1,8 @@
 import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GlobalSignOutCommand, ChangePasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, AdminSetUserPasswordCommand, AdminResetUserPasswordCommand, AdminCreateUserCommand, DeliveryMediumType, AdminUpdateUserAttributesCommand, ChallengeName, AuthenticationResultType, ChallengeNameType, RespondToAuthChallengeCommand, SetUserMFAPreferenceCommand, AdminSetUserMFAPreferenceCommand, ResendConfirmationCodeCommand, VerifyUserAttributeCommand, GetUserAttributeVerificationCodeCommand, InitiateAuthRequest, AssociateSoftwareTokenCommand, GetUserCommand, AdminLinkProviderForUserCommand, AdminDisableProviderForUserCommand, AdminGetUserCommand, ListUsersCommand, AdminDeleteUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityClient, GetIdCommand, GetCredentialsForIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, DecodedIdToken, SignUpResult, SOCIAL_PROVIDERS } from "../interfaces";
+import { CreateUserOptions, IAuthService, InitiateAuthResult, SignInResult, UpdateUserAttributeOptions, UserMfaPreferenceOptions, AdminMfaSettings, SignUpOptions, SocialProvider, SocialSignInResult, SocialSignInConfigs, UserDetails, SignUpResult, SOCIAL_PROVIDERS, MfaMethod } from "../interfaces";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
+import type { CognitoAccessTokenPayload, CognitoIdTokenPayload, CognitoJwtPayload } from "aws-jwt-verify/jwt-model";
 import { createLogger, ILogger, resolveEnvValueFor } from "@ten24group/fw24";
 
 export class CognitoService implements IAuthService {
@@ -487,6 +488,48 @@ export class CognitoService implements IAuthService {
         );  
     }
 
+    async getUserMfaPreference(accessToken: string): Promise<UserMfaPreferenceOptions> {
+        try {
+            const result = await this.identityProviderClient.send(
+                new GetUserCommand({
+                    AccessToken: accessToken,
+                })
+            );
+
+            const enabledMethods: MfaMethod[] = [];
+            let preferredMethod: MfaMethod | undefined = undefined;
+
+            // The MFA options that are activated for the user. 
+            // The possible values in this list are SMS_MFA, EMAIL_OTP, and SOFTWARE_TOKEN_MFA.
+            const mfaSettingList = result.UserMFASettingList || [];
+            if (mfaSettingList.includes('EMAIL_OTP')) {
+                enabledMethods.push('EMAIL');
+            }
+            if (mfaSettingList.includes('SMS_MFA')) {
+                enabledMethods.push('SMS');
+            }
+            if (mfaSettingList.includes('SOFTWARE_TOKEN_MFA')) {
+                enabledMethods.push('SOFTWARE_TOKEN');
+            }
+
+            if (result.PreferredMfaSetting === 'SMS_MFA') {
+                preferredMethod = 'SMS';
+            } else if (result.PreferredMfaSetting === 'SOFTWARE_TOKEN_MFA') {
+                preferredMethod = 'SOFTWARE_TOKEN';
+            } else if (result.PreferredMfaSetting === 'EMAIL_OTP') {
+                preferredMethod = 'EMAIL';
+            }
+
+            return { 
+                enabledMethods, 
+                preferredMethod 
+            };
+
+        } catch (error: any) {
+            throw new Error(`Failed to get MFA preferences: ${error.message}`);
+        }
+    }
+
     async setUserMfaSettings(settings: AdminMfaSettings): Promise<void> {
         const { username, enabledMethods, preferredMethod } = settings;
         
@@ -510,16 +553,23 @@ export class CognitoService implements IAuthService {
         );
     }
 
-    async verifyIdToken(idToken: string): Promise<DecodedIdToken> {
+    async verifyToken(idToken: string, type: 'id' | 'access') {
         const jwtVerifier = CognitoJwtVerifier.create({
             userPoolId: this.getUserPoolID(),
             clientId: this.getUserPoolClientId(),
-            tokenUse: "id",
+            tokenUse: type,
         });
 
         try {
-            const payload = await jwtVerifier.verify(idToken);
-            return payload as unknown as DecodedIdToken;
+            const payload = await jwtVerifier.verify(idToken, {
+                clientId: this.getUserPoolClientId(),
+            });
+            
+            if (type === 'id') {
+                return payload as CognitoIdTokenPayload;
+            }
+            return payload as CognitoAccessTokenPayload;
+
         } catch (error: unknown) {
             if (error instanceof Error) {
                 throw new Error(`Invalid ID-Token: ${error.message}`);
@@ -537,7 +587,9 @@ export class CognitoService implements IAuthService {
         });
 
         try {
-            await jwtVerifier.verify(idToken);
+            await jwtVerifier.verify(idToken, {
+                clientId: this.getUserPoolClientId(),
+            });
         } catch (e) {
             throw new Error(`Invalid ID-Token: ${e}`);
         }
@@ -677,9 +729,9 @@ export class CognitoService implements IAuthService {
             // Pre-check: ensure Cognito user exists before proceeding
             try {
                 // Decode the ID token to extract the Cognito username
-                const decoded = await this.verifyIdToken(tokens.id_token);
+                const decoded = await this.verifyToken(tokens.id_token, 'id');
                 const username = (decoded['cognito:username'] as string) || decoded.sub;
-                const email = decoded.email;
+                const email = decoded.email as string;
                 // Link the social identity using the existing method; this will raise if user does not exist
                 await this.linkSocialProvider(email, username, provider);
             } catch (e: any) {
@@ -739,7 +791,7 @@ export class CognitoService implements IAuthService {
             // Check if user already exists
             try {
                 // Decode the ID token to extract the Cognito username
-                const decoded = await this.verifyIdToken(tokens.id_token);
+                const decoded = await this.verifyToken(tokens.id_token, 'id');
                 const username = (decoded['cognito:username'] as string) || decoded.sub;
                 // Try to get the user - if this succeeds, user already exists
                 await this.identityProviderClient.send(
@@ -758,7 +810,7 @@ export class CognitoService implements IAuthService {
 
             // Update user attributes if provided
             if (userAttributes.length > 0) {
-                const decoded = await this.verifyIdToken(tokens.id_token);
+                const decoded = await this.verifyToken(tokens.id_token, 'id');
                 const username = (decoded['cognito:username'] as string) || decoded.sub;
                 
                 await this.identityProviderClient.send(
@@ -954,4 +1006,28 @@ export class CognitoService implements IAuthService {
             throw error;
         }
     }
+
+    async getCurrentUser(accessToken: string): Promise<UserDetails> {
+        try {
+            const result = await this.identityProviderClient.send(
+                new GetUserCommand({
+                    AccessToken: accessToken,
+                })
+            );
+
+            return {
+                Username: result.Username!,
+                email: result.UserAttributes?.find(attr => attr.Name === 'email')?.Value,
+                Enabled: true, // GetUser only returns data for enabled users
+                UserStatus: 'CONFIRMED', // Users with valid access tokens are confirmed
+                Attributes: result.UserAttributes?.map(attr => ({
+                    Name: attr.Name || '',
+                    Value: attr.Value || ''
+                })),
+            };
+        } catch (error: any) {
+            throw new Error(`Failed to get current user: ${error.message}`);
+        }
+    }
+
 }

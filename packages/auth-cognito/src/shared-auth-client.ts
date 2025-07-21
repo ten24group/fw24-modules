@@ -1,7 +1,7 @@
 import { createLogger, Inject } from "@ten24group/fw24";
 import { AuthServiceDIToken } from "./const";
 import { AddUserToGroupOptions, CreateUserAuthenticationOptions, CreateUserOptions, IAuthModuleClient, IAuthService, RemoveUserFromGroupOptions, ResetUserPasswordOptions, SetUserGroupsOptions, SetUserPasswordOptions, SignInResult, UpdateUserAttributeOptions, UserDetails } from "./interfaces";
-import { DecodedIdToken } from "./interfaces";
+import { CognitoJwtPayload } from "aws-jwt-verify/jwt-model";
 
 export class SharedAuthClient implements IAuthModuleClient {
 
@@ -102,8 +102,8 @@ export class SharedAuthClient implements IAuthModuleClient {
         return await this.authService.deleteUser(username);
     };
 
-    async verifyIdToken(idToken: string): Promise<DecodedIdToken> {
-        return await this.authService.verifyIdToken(idToken);
+    async verifyToken(idToken: string, type: 'id' | 'access'): Promise<CognitoJwtPayload> {
+        return await this.authService.verifyToken(idToken, type);
     };
 
 }

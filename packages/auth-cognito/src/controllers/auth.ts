@@ -699,7 +699,7 @@ export class AuthController extends APIController {
     @Authorizer({ type: 'AWS_IAM', requireRouteInGroupConfig: true })
     @Get('/group-options')
     getGroupOptions(req: Request, res: Response): Response {
-        const groups = resolveEnvValueFor({key: 'authGroups'}) || '';
+        const groups: string = resolveEnvValueFor({key: 'authGroups'}) || '';
         const groupOptions = groups.split(',').map(group => ({
             label: toHumanReadableName(group),
             value: group
@@ -790,6 +790,49 @@ export class AuthController extends APIController {
     }
 
     /**
+     * Get current user profile information using access token
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "accessToken": "user-access-token"
+     * }
+     * ```
+     * 
+     * Success response:
+     * ```json
+     * {
+     *   "Username": "user@example.com",
+     *   "email": "user@example.com",
+     *   "Enabled": true,
+     *   "UserStatus": "CONFIRMED",
+     *   "Attributes": [
+     *     {
+     *       "Name": "email",
+     *       "Value": "user@example.com"
+     *     },
+     *     {
+     *       "Name": "email_verified",
+     *       "Value": "true"
+     *     }
+     *   ]
+     * }
+     * ```
+     */
+    @Post('/getCurrentUser', {
+        validations: {
+            accessToken: { required: true },
+        }
+    })
+    async getCurrentUser(req: Request, res: Response) {
+        const { accessToken } = req.body as { accessToken: string };
+
+        const user = await this.authService.getCurrentUser(accessToken);
+
+        return res.json(user);
+    }
+
+    /**
      * Update MFA preferences for the authenticated user
      * 
      * Example request:
@@ -848,6 +891,45 @@ export class AuthController extends APIController {
         await this.authService.updateUserMfaPreference(accessToken, mfaPreference);
 
         return res.json({ message: 'User MFA preference updated' });
+    }
+
+    /**
+     * Get current MFA preferences for the authenticated user
+     * 
+     * Example request:
+     * ```json
+     * {
+     *   "accessToken": "user-access-token"
+     * }
+     * ```
+     * 
+     * Success response:
+     * ```json
+     * {
+     *   "enabledMethods": ["EMAIL", "SMS"],
+     *   "preferredMethod": "EMAIL"
+     * }
+     * ```
+     * 
+     * If no MFA is configured:
+     * ```json
+     * {
+     *   "enabledMethods": [],
+     *   "preferredMethod": null
+     * }
+     * ```
+     */
+    @Post('/getUserMfaPreference', {
+        validations: {
+            accessToken: { required: true },
+        }
+    })
+    async getUserMfaPreference(req: Request, res: Response) {    
+        const { accessToken } = req.body as { accessToken: string };
+
+        const mfaPreference = await this.authService.getUserMfaPreference(accessToken);
+
+        return res.json(mfaPreference);
     }
 
     /**
@@ -1163,6 +1245,33 @@ export class AuthController extends APIController {
         } catch (error: any) {
             return res.status(400).json({
                 message: error.message || 'Failed to set new password'
+            });
+        }
+    }
+
+    /**
+     * Verify a JWT token.
+     *
+     * @param {Request} req - The request object.
+     * @param {Response} res - The response object.
+     * @returns {Response} - The response.
+     */
+    @Post('/verifyToken', {
+        validations: {
+            token: { required: true },
+            type: { required: true, inList: ['id', 'access'] }
+        }
+    })
+    async verifyToken(req: Request, res: Response) {
+        const { token, type } = req.body as { token: string; type: 'id' | 'access' };
+
+        try {
+            const payload = await this.authService.verifyToken(token, type);
+            return res.json({ valid: true, payload });
+        } catch (error: any) {
+            return res.json({
+                valid: false,
+                message: error.message
             });
         }
     }
