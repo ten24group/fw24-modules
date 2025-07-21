@@ -1256,10 +1256,10 @@ export class AuthController extends APIController {
      * @param {Response} res - The response object.
      * @returns {Response} - The response.
      */
-    @Post('/verify-token', {
+    @Post('/verifyToken', {
         validations: {
             token: { required: true },
-            type: { required: true }
+            type: { required: true, inList: ['id', 'access'] }
         }
     })
     async verifyToken(req: Request, res: Response) {
