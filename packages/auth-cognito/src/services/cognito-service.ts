@@ -496,38 +496,35 @@ export class CognitoService implements IAuthService {
                 })
             );
 
-            const enabledMethods: Array<MfaMethod> = [];
+            const enabledMethods: MfaMethod[] = [];
             let preferredMethod: MfaMethod | undefined = undefined;
 
-            // Check MFA preferences from user attributes
-            const mfaOptions = result.MFAOptions || [];
-            
-            for (const option of mfaOptions) {
-                if (option.DeliveryMedium === 'EMAIL') {
-                    enabledMethods.push('EMAIL');
-                    if (!preferredMethod) preferredMethod = 'EMAIL';
-                } else if (option.DeliveryMedium === 'SMS') {
-                    enabledMethods.push('SMS');
-                    if (!preferredMethod) preferredMethod = 'SMS';
-                }
+            // The MFA options that are activated for the user. 
+            // The possible values in this list are SMS_MFA, EMAIL_OTP, and SOFTWARE_TOKEN_MFA.
+            const mfaSettingList = result.UserMFASettingList || [];
+            if (mfaSettingList.includes('EMAIL_OTP')) {
+                enabledMethods.push('EMAIL');
             }
-
-            // Check for software token MFA (TOTP)
-            // This requires checking if user has software token devices
-            const userAttributes = result.UserAttributes || [];
-            const hasSoftwareToken = userAttributes.some(attr => 
-                attr.Name === 'software_token_mfa_settings' && attr.Value === 'enabled'
-            );
-            
-            if (hasSoftwareToken) {
+            if (mfaSettingList.includes('SMS_MFA')) {
+                enabledMethods.push('SMS');
+            }
+            if (mfaSettingList.includes('SOFTWARE_TOKEN_MFA')) {
                 enabledMethods.push('SOFTWARE_TOKEN');
-                if (!preferredMethod) preferredMethod = 'SOFTWARE_TOKEN';
             }
 
-            return {
-                enabledMethods,
-                preferredMethod: preferredMethod
+            if (result.PreferredMfaSetting === 'SMS_MFA') {
+                preferredMethod = 'SMS';
+            } else if (result.PreferredMfaSetting === 'SOFTWARE_TOKEN_MFA') {
+                preferredMethod = 'SOFTWARE_TOKEN';
+            } else if (result.PreferredMfaSetting === 'EMAIL_OTP') {
+                preferredMethod = 'EMAIL';
+            }
+
+            return { 
+                enabledMethods, 
+                preferredMethod 
             };
+
         } catch (error: any) {
             throw new Error(`Failed to get MFA preferences: ${error.message}`);
         }
