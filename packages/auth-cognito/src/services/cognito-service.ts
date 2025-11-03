@@ -390,13 +390,18 @@ export class CognitoService implements IAuthService {
             })
         );
 
-        return groupsList.Groups?.map(g => g.GroupName ?? '') ?? [];
+        const groups = groupsList.Groups?.map(g => g.GroupName ?? '') ?? [];
+        this.logger.info(`📋 getUserGroupNames for ${username}:`, groups);
+        return groups;
     }
 
     async setUserGroups(username: string, newGroups: string[], updateSocialProviders = true): Promise<void> {
+        this.logger.info(`🔄 setUserGroups called for ${username}, newGroups:`, newGroups, `updateSocialProviders: ${updateSocialProviders}`);
+
         const socialProviderList = this.getSupportedSocialProviders();
         // if social provider is enabled, get all the users from this username
         if (updateSocialProviders) {
+            this.logger.info(`🔁 Recursively updating social provider users for ${username}`);
             // get the user email
             const user = await this.identityProviderClient.send(
                 new AdminGetUserCommand({
@@ -412,19 +417,26 @@ export class CognitoService implements IAuthService {
                 })
             );
             if (users.Users) {
+                this.logger.info(`Found ${users.Users.length} users with same email`);
                 for (const user of users.Users) {
                     await this.setUserGroups(user.Username!, newGroups, false);
                 }
             }
         }
-        
+
         const existingUserGroups = await this.getUserGroupNames(username);
+        this.logger.info(`📊 Existing groups for ${username}:`, existingUserGroups);
+        this.logger.info(`📊 New groups to set:`, newGroups);
+
         const promises = [];
 
         // collect only the new groups to be added
         for (const group of newGroups) {
             if (!existingUserGroups.includes(group)) {
+                this.logger.info(`➕ Adding group ${group} to ${username}`);
                 promises.push(this.addUserToGroup(username, group))
+            } else {
+                this.logger.info(`✅ Group ${group} already exists for ${username}`);
             }
         }
 
@@ -436,12 +448,16 @@ export class CognitoService implements IAuthService {
                 !newGroups.includes(group) &&
                 !isSocialProviderGroup
             ) {
-                this.logger.debug('removing group', username, group, isSocialProviderGroup);
+                this.logger.info(`➖ Removing group ${group} from ${username} (isSocialProviderGroup: ${isSocialProviderGroup})`);
                 promises.push(this.removeUserFromGroup(username, group))
+            } else if (isSocialProviderGroup) {
+                this.logger.info(`⏭️ Skipping removal of social provider group ${group} from ${username}`);
             }
         }
 
+        this.logger.info(`🎯 Executing ${promises.length} group operations for ${username}`);
         await Promise.all(promises);
+        this.logger.info(`✅ setUserGroups completed for ${username}`);
     }
 
     async updateUserAttributes(options: UpdateUserAttributeOptions): Promise<void> {
@@ -730,10 +746,18 @@ export class CognitoService implements IAuthService {
             try {
                 // Decode the ID token to extract the Cognito username
                 const decoded = await this.verifyToken(tokens.id_token, 'id');
+                this.logger.info('🎫 Initial token decoded (before sync):', JSON.stringify(decoded, null, 2));
+
                 const username = (decoded['cognito:username'] as string) || decoded.sub;
                 const email = decoded.email as string;
                 // Link the social identity using the existing method; this will raise if user does not exist
                 await this.linkSocialProvider(email, username, provider);
+
+                // Decode token again to see if claims updated (they won't, but let's verify)
+                const decodedAfterSync = await this.verifyToken(tokens.id_token, 'id');
+                this.logger.info('🎫 Token decoded after sync:', JSON.stringify(decodedAfterSync, null, 2));
+                this.logger.info('👤 userId claim present?', 'userId' in decodedAfterSync ? decodedAfterSync['userId'] : 'NO');
+                this.logger.info('🔧 custom:userId claim present?', 'custom:userId' in decodedAfterSync ? decodedAfterSync['custom:userId'] : 'NO');
             } catch (e: any) {
                 throw new Error('No user found. Please sign up before using social login.');
             }
@@ -842,6 +866,8 @@ export class CognitoService implements IAuthService {
     async linkSocialProvider(email: string, username: string, provider: SocialProvider): Promise<void> {
         const userPoolId = this.getUserPoolID();
         try {
+            this.logger.info(`🔗 linkSocialProvider called: email=${email}, username=${username}, provider=${provider}`);
+
             const listUsersResult = await this.identityProviderClient.send(
                 new ListUsersCommand({
                     UserPoolId: userPoolId,
@@ -849,6 +875,12 @@ export class CognitoService implements IAuthService {
                     Limit: 10,
                 })
             );
+
+            this.logger.info(`📧 Found ${listUsersResult.Users?.length || 0} users with email ${email}`);
+            listUsersResult.Users?.forEach(u => {
+                this.logger.info(`  - Username: ${u.Username}, Status: ${u.UserStatus}, Provider: ${u.Username?.split('_')[0]}`);
+            });
+
             if (!listUsersResult.Users) {
                 throw new Error('No user found with this email');
             }
@@ -856,9 +888,42 @@ export class CognitoService implements IAuthService {
             const nativeUser = listUsersResult.Users.find(
                 u => u.Username && !u.Username.startsWith(provider) && u.UserStatus !== 'EXTERNAL_PROVIDER'
             );
+
             if (!nativeUser) {
+                this.logger.info(`❌ No native user found for email ${email}. Users found:`, listUsersResult.Users?.map(u => u.Username));
                 throw new Error('No User found with this email. Please sign up before using social login.');
             }
+
+            this.logger.info(`✅ Found native user: ${nativeUser.Username}`);
+
+            // Sync groups and custom:userId from native user to social provider user
+            // This runs every time to ensure consistency
+            this.logger.info('syncing user groups and attributes from native user to social provider user');
+
+            // sync the user groups for the linked user
+            const groups = await this.getUserGroupNames(nativeUser.Username!);
+            this.logger.info('syncing user groups for the linked user', nativeUser.Username!, groups);
+            await this.setUserGroups(username, groups, false);
+
+            // Copy custom:userId attribute from native user to social provider user
+            const customUserId = nativeUser.Attributes?.find(attr => attr.Name === 'custom:userId')?.Value;
+            if (customUserId) {
+                this.logger.info('copying custom:userId attribute to social provider user', username, customUserId);
+                await this.identityProviderClient.send(
+                    new AdminUpdateUserAttributesCommand({
+                        UserPoolId: userPoolId,
+                        Username: username,
+                        UserAttributes: [{
+                            Name: 'custom:userId',
+                            Value: customUserId
+                        }]
+                    })
+                );
+                this.logger.info('custom:userId attribute copied successfully');
+            } else {
+                this.logger.info('custom:userId not found on native user', nativeUser.Username!);
+            }
+
             // check if the user is already linked to this provider (by federated username in identities)
             const identitiesAttr = nativeUser.Attributes?.find(attr => attr.Name === 'identities')?.Value;
             let alreadyLinked = false;
@@ -876,7 +941,7 @@ export class CognitoService implements IAuthService {
                 this.logger.info('social provider already linked for the user', nativeUser.Username!, username, provider);
                 return;
             }
-            this.logger.debug('linking social provider for the user', nativeUser.Username!, username, provider);
+            this.logger.info('linking social provider for the user', nativeUser.Username!, username, provider);
             await this.identityProviderClient.send(
                 new AdminLinkProviderForUserCommand({
                     UserPoolId: userPoolId,
@@ -891,14 +956,10 @@ export class CognitoService implements IAuthService {
                     },
                 })
             );
-            this.logger.debug('linked social provider for the user, checking the user groups');
-            // sync the user groups for the linked user
-            const groups = await this.getUserGroupNames(nativeUser.Username!);
-            this.logger.debug('syncing user groups for the linked user', nativeUser.Username!, groups);
-            await this.setUserGroups(username, groups, false);
+            this.logger.info('linked social provider for the user successfully');
 
         } catch (e: any) {
-            this.logger.error('Failed to link social provider', e);
+            this.logger.info('Failed to link social provider', e);
             throw new Error('Failed to link social provider', e);
         }
     }

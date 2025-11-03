@@ -58,12 +58,13 @@ const signInValidations: InputValidationRule<SignInRequest> = {
     policies: [
         {
             actions: [
-                'cognito-idp:ListUsers', 
-                'cognito-idp:AdminGetUser', 
-                'cognito-idp:AdminListGroupsForUser', 
+                'cognito-idp:ListUsers',
+                'cognito-idp:AdminGetUser',
+                'cognito-idp:AdminListGroupsForUser',
                 'cognito-idp:AdminAddUserToGroup',
                 'cognito-idp:AdminRemoveUserFromGroup',
-                'cognito-idp:AdminLinkProviderForUser'
+                'cognito-idp:AdminLinkProviderForUser',
+                'cognito-idp:AdminUpdateUserAttributes'
             ],
             resources: ['*']
         }

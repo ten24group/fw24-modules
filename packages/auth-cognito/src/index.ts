@@ -8,6 +8,7 @@ import { SharedAuthClient } from './shared-auth-client';
 import { type UserPoolOperation } from 'aws-cdk-lib/aws-cognito';
 
 export * from './interfaces'
+export { CognitoService } from './services/cognito-service';
 
 @DIModule({
     providers: [
@@ -87,6 +88,15 @@ export class AuthModule extends AbstractFw24Module {
                 triggerMap.set(customMessageTrigger.trigger, customMessageTrigger);
             }
         }
+
+        //Add pre-token generation trigger to include custom:userId in JWT tokens
+        const preTokenGenerationTrigger = {
+            trigger: 'PRE_TOKEN_GENERATION' as const,
+            functionProps: {
+                entry: join(__dirname, 'functions/pre-token-generation.js'),
+            }
+        };
+        triggerMap.set(preTokenGenerationTrigger.trigger, preTokenGenerationTrigger);
 
         // Override with any user-provided triggers
         if(config.triggers){
