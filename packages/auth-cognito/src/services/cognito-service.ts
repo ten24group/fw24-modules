@@ -752,12 +752,7 @@ export class CognitoService implements IAuthService {
                 const email = decoded.email as string;
                 // Link the social identity using the existing method; this will raise if user does not exist
                 await this.linkSocialProvider(email, username, provider);
-
-                // Decode token again to see if claims updated (they won't, but let's verify)
-                const decodedAfterSync = await this.verifyToken(tokens.id_token, 'id');
-                this.logger.info('🎫 Token decoded after sync:', JSON.stringify(decodedAfterSync, null, 2));
-                this.logger.info('👤 userId claim present?', 'userId' in decodedAfterSync ? decodedAfterSync['userId'] : 'NO');
-                this.logger.info('🔧 custom:userId claim present?', 'custom:userId' in decodedAfterSync ? decodedAfterSync['custom:userId'] : 'NO');
+                
             } catch (e: any) {
                 throw new Error('No user found. Please sign up before using social login.');
             }

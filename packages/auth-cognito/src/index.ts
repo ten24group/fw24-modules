@@ -89,15 +89,6 @@ export class AuthModule extends AbstractFw24Module {
             }
         }
 
-        //Add pre-token generation trigger to include custom:userId in JWT tokens
-        const preTokenGenerationTrigger = {
-            trigger: 'PRE_TOKEN_GENERATION' as const,
-            functionProps: {
-                entry: join(__dirname, 'functions/pre-token-generation.js'),
-            }
-        };
-        triggerMap.set(preTokenGenerationTrigger.trigger, preTokenGenerationTrigger);
-
         // Override with any user-provided triggers
         if(config.triggers){
             config.triggers.forEach(trigger => {
