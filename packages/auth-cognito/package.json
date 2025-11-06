@@ -38,7 +38,7 @@
     "@jest/globals": "^29.0.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^18.0.0",
-    "@ten24group/fw24": "../../../fw24",
+    "@ten24group/fw24": "^1.0.0",
     "aws-cdk-lib": "^2.202.0",
     "aws-sdk-client-mock": "^3.0.0",
     "aws-sdk-client-mock-jest": "^3.0.0",
