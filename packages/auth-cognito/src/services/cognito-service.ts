@@ -863,6 +863,24 @@ export class CognitoService implements IAuthService {
                 throw new Error('No User found with this email. Please sign up before using social login.');
             }
 
+            // check if the user is already linked to this provider (by federated username in identities)
+            const identitiesAttr = nativeUser.Attributes?.find(attr => attr.Name === 'identities')?.Value;
+            let alreadyLinked = false;
+            if (identitiesAttr) {
+                try {
+                    const identities = JSON.parse(identitiesAttr);
+                    alreadyLinked = Array.isArray(identities) && identities.some(
+                        (identity: any) => identity.userId === username
+                    );
+                } catch (e) {
+                    alreadyLinked = false;
+                }
+            }
+            if (alreadyLinked) {
+                this.logger.info('social provider already linked for the user', nativeUser.Username!, username, provider);
+                return;
+            }
+
             // Sync groups and custom:userId from native user to social provider user
             // This runs every time to ensure consistency
             this.logger.debug('syncing user groups and attributes from native user to social provider user');
@@ -891,23 +909,7 @@ export class CognitoService implements IAuthService {
                 this.logger.debug('custom:userId not found on native user', nativeUser.Username!);
             }
 
-            // check if the user is already linked to this provider (by federated username in identities)
-            const identitiesAttr = nativeUser.Attributes?.find(attr => attr.Name === 'identities')?.Value;
-            let alreadyLinked = false;
-            if (identitiesAttr) {
-                try {
-                    const identities = JSON.parse(identitiesAttr);
-                    alreadyLinked = Array.isArray(identities) && identities.some(
-                        (identity: any) => identity.userId === username
-                    );
-                } catch (e) {
-                    alreadyLinked = false;
-                }
-            }
-            if (alreadyLinked) {
-                this.logger.info('social provider already linked for the user', nativeUser.Username!, username, provider);
-                return;
-            }
+            
             this.logger.debug('linking social provider for the user', nativeUser.Username!, username, provider);
             await this.identityProviderClient.send(
                 new AdminLinkProviderForUserCommand({
