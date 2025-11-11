@@ -417,8 +417,9 @@ export class CognitoService implements IAuthService {
                 }
             }
         }
-        
+
         const existingUserGroups = await this.getUserGroupNames(username);
+
         const promises = [];
 
         // collect only the new groups to be added
@@ -436,7 +437,7 @@ export class CognitoService implements IAuthService {
                 !newGroups.includes(group) &&
                 !isSocialProviderGroup
             ) {
-                this.logger.debug('removing group', username, group, isSocialProviderGroup);
+                this.logger.debug(`Removing group ${group} from ${username} (isSocialProviderGroup: ${isSocialProviderGroup})`);
                 promises.push(this.removeUserFromGroup(username, group))
             }
         }
@@ -849,6 +850,7 @@ export class CognitoService implements IAuthService {
                     Limit: 10,
                 })
             );
+
             if (!listUsersResult.Users) {
                 throw new Error('No user found with this email');
             }
@@ -856,9 +858,11 @@ export class CognitoService implements IAuthService {
             const nativeUser = listUsersResult.Users.find(
                 u => u.Username && !u.Username.startsWith(provider) && u.UserStatus !== 'EXTERNAL_PROVIDER'
             );
+
             if (!nativeUser) {
                 throw new Error('No User found with this email. Please sign up before using social login.');
             }
+
             // check if the user is already linked to this provider (by federated username in identities)
             const identitiesAttr = nativeUser.Attributes?.find(attr => attr.Name === 'identities')?.Value;
             let alreadyLinked = false;
@@ -876,6 +880,36 @@ export class CognitoService implements IAuthService {
                 this.logger.info('social provider already linked for the user', nativeUser.Username!, username, provider);
                 return;
             }
+
+            // Sync groups and custom:userId from native user to social provider user
+            // This runs every time to ensure consistency
+            this.logger.debug('syncing user groups and attributes from native user to social provider user');
+
+            // sync the user groups for the linked user
+            const groups = await this.getUserGroupNames(nativeUser.Username!);
+            this.logger.debug('syncing user groups for the linked user', nativeUser.Username!, groups);
+            await this.setUserGroups(username, groups, false);
+
+            // Copy custom:userId attribute from native user to social provider user
+            const customUserId = nativeUser.Attributes?.find(attr => attr.Name === 'custom:userId')?.Value;
+            if (customUserId) {
+                this.logger.debug('copying custom:userId attribute to social provider user', username, customUserId);
+                await this.identityProviderClient.send(
+                    new AdminUpdateUserAttributesCommand({
+                        UserPoolId: userPoolId,
+                        Username: username,
+                        UserAttributes: [{
+                            Name: 'custom:userId',
+                            Value: customUserId
+                        }]
+                    })
+                );
+                this.logger.debug('custom:userId attribute copied successfully');
+            } else {
+                this.logger.debug('custom:userId not found on native user', nativeUser.Username!);
+            }
+
+            
             this.logger.debug('linking social provider for the user', nativeUser.Username!, username, provider);
             await this.identityProviderClient.send(
                 new AdminLinkProviderForUserCommand({
@@ -891,11 +925,6 @@ export class CognitoService implements IAuthService {
                     },
                 })
             );
-            this.logger.debug('linked social provider for the user, checking the user groups');
-            // sync the user groups for the linked user
-            const groups = await this.getUserGroupNames(nativeUser.Username!);
-            this.logger.debug('syncing user groups for the linked user', nativeUser.Username!, groups);
-            await this.setUserGroups(username, groups, false);
 
         } catch (e: any) {
             this.logger.error('Failed to link social provider', e);

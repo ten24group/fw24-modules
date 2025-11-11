@@ -8,6 +8,7 @@ import { SharedAuthClient } from './shared-auth-client';
 import { type UserPoolOperation } from 'aws-cdk-lib/aws-cognito';
 
 export * from './interfaces'
+export { CognitoService } from './services/cognito-service';
 
 @DIModule({
     providers: [
